@@ -1,6 +1,6 @@
 # ONBOARDING-FLOW.md — New State-Based Onboarding
 
-This document describes the new onboarding logic for the Qahal redesign.
+Historical onboarding behavior proposal. Verify implementation against apps/miniapp/src/app/useAppFlow.ts and the owning screens; map and pending-implementation statements below are historical. Current visual policy and screen inventory live in [DESIGN.md](../DESIGN.md).
 
 ---
 
@@ -14,11 +14,11 @@ This document describes the new onboarding logic for the Qahal redesign.
 
 **Single-choice options:**
 
-| Option (English)              | Option (Español)                     | Internal Value       |
-|-------------------------------|--------------------------------------|----------------------|
-| Congregation leader           | Líder de congregación                | `leader`             |
-| Experienced in the Emunah     | Experimentado en la Emunah           | `experienced`        |
-| Starting in the Emunah        | Comenzando en la Emunah              | `starting`           |
+| Option (English)          | Option (Español)           | Internal Value |
+| ------------------------- | -------------------------- | -------------- |
+| Congregation leader       | Líder de congregación      | `leader`       |
+| Experienced in the Emunah | Experimentado en la Emunah | `experienced`  |
+| Starting in the Emunah    | Comenzando en la Emunah    | `starting`     |
 
 ---
 
@@ -52,6 +52,7 @@ If the user selects **"Congregation leader"** (`leader`):
 
 - They **cannot** create a new Qahal immediately.
 - After completing onboarding, they see a message:
+
   > "To lead a congregation, you must first meet with the leaders of the congregations in your country. A national leader will contact you."
 
 - When the user is approved by the national leadership:

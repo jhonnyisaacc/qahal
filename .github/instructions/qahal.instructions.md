@@ -33,10 +33,12 @@ The goal is to move faith from digital screens to real-life encounters: connecti
 ## Critical Reminders
 
 ### NEVER:
+
 - Use cold, modern, or corporate map styles.
-- Break the consistent "vintage nautical parchment" design language.
+- Depart from the canonical DESIGN.md system (Manrope and Purple/Ink/Paper) or approved Pen visuals.
 
 ### ALWAYS:
+
 - Make the map experience beautiful, warm and inviting.
 - Ensure excellent mobile performance inside Telegram.
 - Write all code, comments, and documentation **in English**.

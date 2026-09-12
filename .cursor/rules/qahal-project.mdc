@@ -39,3 +39,7 @@ This file provides project-specific guidance for Cursor when working on the Qaha
 
 - Always prefer reading the two root markdown files (`AGENTS.md` + `DESIGN.md`) before suggesting code.
 - When the user asks for design-related changes, explicitly reference tokens from DESIGN.md.
+
+## Design authority
+
+Follow DESIGN.md for Manrope, Purple/Ink/Paper, tokens and the current screen inventory. The canonical future Pen workflow is docs/product/paper-to-code.md. Historical Paper references are not approved Pen visuals.

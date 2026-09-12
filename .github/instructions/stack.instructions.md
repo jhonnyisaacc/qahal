@@ -131,55 +131,9 @@ Before merge to main:
 - Confirm no regression in initial bundle size.
 - Verify startup behavior in Telegram WebView, not only desktop browser.
 
-## Paper-to-Code Workflow
+## Design-to-Code Workflow
 
-This is the official process to move from paper designs, wireframes, or MCP paper output to production code.
-
-### Phase 1: Design Intake
-
-- Freeze screen list and user flows in Paper first.
-- Label each screen by domain and state.
-- Export or capture component inventory (cards, list rows, map panels, forms, nav bars).
-
-### Phase 2: UI Decomposition
-
-For each screen, split into three layers:
-
-- Layout shell: page structure, spacing, safe-area behavior.
-- Reusable components: buttons, tiles, headers, inputs, list items.
-- Feature logic blocks: auth state, location state, map markers, permissions.
-
-### Phase 3: Component Mapping to TelegramUI + React
-
-- Use AppRoot as the root wrapper.
-- Map design tokens to Tailwind utilities and theme variables.
-- Build reusable feature components in miniapp/src/components and miniapp/src/features.
-- Keep components presentational first; move logic into hooks/services.
-
-### Phase 4: Naming and File Conventions
-
-- Screens: FeaturePurposeScreen.tsx
-- Reusable blocks: FeatureNameCard.tsx, FeatureNameRow.tsx
-- Hooks: useFeatureName.ts
-- Services: featureNameService.ts
-- API route handlers: feature-name.ts
-
-### Phase 5: Design-Code Sync Discipline
-
-- Keep one source-of-truth screen matrix in docs.
-- For each Paper screen, link to implemented route and component files.
-- Track design delta explicitly: Planned, In Progress, Matched, Needs Review.
-- Run regular visual QA between Paper and implemented UI.
-
-### Phase 6: MCP Paper Integration Pattern
-
-When all screens exist in MCP Paper:
-
-- Convert each artboard into a component contract first (props, states, events).
-- Build low-fidelity functional layout in React + TelegramUI.
-- Apply styling and spacing pass to match Paper.
-- Bind backend data only after static fidelity is approved.
-- Finalize with mobile Telegram WebView QA.
+DESIGN.md defines the system and current screen inventory. Follow docs/product/paper-to-code.md for Pen preparation, visual approval and implementation. Its historical filename does not imply Paper authority. Code owns behavior and accessibility; approved Pen screens own visual intent. Preserve AppRoot, shared contracts and the file conventions in AGENTS.md.
 
 ## How to Start Development
 
@@ -197,6 +151,6 @@ When asked to start building the basic base, follow this exact order:
    - Fetch current user from worker
 8. Add first map screen with Leaflet and static markers.
 9. Add CI checks for build, lint, tests, and bundle guardrails.
-10. Start feature-by-feature implementation using the Paper-to-Code workflow.
+10. Start feature-by-feature implementation using the canonical design-to-code workflow.
 
 If the user says: start developing the basic base, execute these steps immediately in this sequence.

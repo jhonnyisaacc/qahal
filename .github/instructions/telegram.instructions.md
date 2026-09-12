@@ -143,18 +143,9 @@ Before release:
 - Confirm startup and interaction performance on real mobile devices.
 - Run regression checks for worker auth and D1 access paths.
 
-## Paper-to-Code Workflow (Telegram Compliant)
+## Design-to-Code Workflow (Telegram Compliant)
 
-Once all screens are finalized in paper, wireframes, or MCP paper, follow this path:
-
-1. Build a screen inventory with states and Telegram interaction requirements.
-2. Map each screen to TelegramUI primitives first.
-3. Define React component contracts (props, state, events) per artboard.
-4. Implement static UI shells in React + TelegramUI.
-5. Apply responsive and safe-area rules before data binding.
-6. Integrate Telegram runtime behaviors (ready, expand, theme, haptic, location).
-7. Connect backend endpoints only after visual parity passes.
-8. Run Telegram WebView QA and fix deviations from native feel.
+Follow DESIGN.md and docs/product/paper-to-code.md for approved Pen visuals and implementation. Keep AppRoot, safe areas, ready/expand, theme subscriptions, haptics, location permissions and real Telegram WebView QA. Code remains authoritative for accessibility behavior and API contracts. Phase 1 is foundations only.
 
 ## Change Management and Flexibility
 

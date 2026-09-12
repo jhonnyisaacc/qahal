@@ -67,6 +67,6 @@ This keeps UI, state, and feature code unified while only runtime-specific behav
 
 To test mobile behavior in a desktop browser, open dev tools device emulation and visit http://localhost:3006.
 
-## Paper-to-Code
+## Design system and Pen workflow
 
-Design integration workflow is documented in docs/product/paper-to-code.md.
+[DESIGN.md](DESIGN.md) contains the canonical system, audit and screen inventory. The future Pen workflow is documented in [docs/product/paper-to-code.md](docs/product/paper-to-code.md). Phase 1 consolidates foundations; no Pen screens have been created or approved.

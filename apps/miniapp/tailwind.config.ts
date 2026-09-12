@@ -16,9 +16,9 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Playfair Display', 'serif'],
-        body: ['Inter', 'system-ui', 'sans-serif'],
-        hebrew: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['var(--font-body)'],
+        body: ['var(--font-body)'],
+        hebrew: ['var(--font-body)'],
       },
     },
   },

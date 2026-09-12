@@ -12,7 +12,7 @@ Qahal is a serverless Telegram Mini App built with a Bun workspace monorepo.
 
 ## Runtime Boundaries
 
-- Frontend handles UI, map rendering, and Telegram WebApp client APIs.
+- Frontend handles list-based Local/Online congregation discovery, profile and contextual management UI, and Telegram WebApp client APIs. Map modules remain legacy and are not rendered by active navigation.
 - Worker handles auth validation, data persistence, and API contracts.
 - Shared package ensures request and response schema consistency.
 

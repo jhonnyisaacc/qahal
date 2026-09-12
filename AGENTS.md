@@ -106,12 +106,12 @@ This is **non-negotiable**. Read `docs/product/cloudflare-go-live.md` for deploy
 
 ## 5. Design System
 
-**DESIGN.md is the single source of truth** for all visual, branding, typography, color, and component decisions.
+**DESIGN.md is the canonical design policy and inventory.** CSS tokens implement it. Once a screen is approved in Pen, Pen is its visual source of truth; code owns behavior, data, accessibility behavior and architecture.
 
-- When making any UI, styling, or branding changes, **always consult and follow DESIGN.md**.
-- The previous "vintage nautical parchment" language is superseded by the new brand defined in DESIGN.md (Hebrew Qof symbol, purple/navy/light palette, Playfair Display + Inter typography).
-- All new components and screens must use the tokens, spacing, and principles defined in DESIGN.md.
-- Dark mode and Hebrew typography support must follow the specifications in DESIGN.md.
+- Always consult DESIGN.md for UI, styling or branding changes.
+- Use Manrope and Qahal Purple/Ink/Paper. Playfair/Inter and nautical parchment directions are superseded.
+- Follow the light/dark, Hebrew, token and accessibility requirements in DESIGN.md.
+- Phase 1 establishes foundations only; Pen materialization requires the separately requested next phase.
 
 ---
 
@@ -148,15 +148,9 @@ This is **non-negotiable**. Read `docs/product/cloudflare-go-live.md` for deploy
 
 ---
 
-## 10. Paper-to-Code Workflow
+## 10. Design-to-Code Workflow
 
-When implementing from paper designs, wireframes, or MCP paper output:
-
-1. **Design Intake** — Freeze screen list and user flows. Label each screen by domain and state.
-2. **UI Decomposition** — Split each screen into: layout shell, reusable components, feature logic blocks.
-3. **Component Mapping** — Use AppRoot, map tokens to Tailwind, build presentational components first; move logic into hooks/services.
-4. **Data Binding** — Connect backend endpoints only after static visual fidelity is approved.
-5. **Telegram QA** — Run regression checks in real Telegram WebView for theme, safe-area, auth, and performance.
+Follow the canonical workflow in [docs/product/paper-to-code.md](docs/product/paper-to-code.md). The historical filename now documents Pen preparation, approval and implementation. Do not treat old Paper artboard IDs as approved Pen specifications. Preserve AppRoot, feature boundaries and Telegram QA requirements.
 
 ---
 
