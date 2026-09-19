@@ -133,7 +133,7 @@ Before merge to main:
 
 ## Design-to-Code Workflow
 
-DESIGN.md defines the system and current screen inventory. Follow docs/product/paper-to-code.md for Pen preparation, visual approval and implementation. Its historical filename does not imply Paper authority. Code owns behavior and accessibility; approved Pen screens own visual intent. Preserve AppRoot, shared contracts and the file conventions in AGENTS.md.
+DESIGN.md v2.1 defines the system and screen inventory. design/qahal.pen holds the draft phones and component library. Follow docs/product/paper-to-code.md for Pen work, visual approval and implementation. Its historical filename does not imply Paper authority. Code owns behavior and accessibility; approved Pen screens own visual intent. Preserve AppRoot, shared contracts and the file conventions in AGENTS.md.
 
 ## How to Start Development
 

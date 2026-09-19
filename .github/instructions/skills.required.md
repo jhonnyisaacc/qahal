@@ -48,13 +48,13 @@ This document defines the capabilities needed to build and maintain this Telegra
 
 ## UI/UX and Design Translation Skills
 
-| Skill                           | Why It Is Required                                                        |
-| ------------------------------- | ------------------------------------------------------------------------- |
-| Paper-to-code decomposition     | Converts static designs into reusable, testable component systems.        |
-| Component contract thinking     | Prevents ad-hoc UI and accelerates iteration across many screens.         |
-| Mobile-first interaction design | Core audience uses Telegram mobile WebView first.                         |
-| Visual QA discipline            | Maintains fidelity between approved paper designs and production screens. |
-| Design token consistency        | Preserves coherent brand and interaction language across features.        |
+| Skill                           | Why It Is Required                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------- |
+| Paper-to-code decomposition     | Converts static designs into reusable, testable component systems.                  |
+| Component contract thinking     | Prevents ad-hoc UI and accelerates iteration across many screens.                   |
+| Mobile-first interaction design | Core audience uses Telegram mobile WebView first.                                   |
+| Visual QA discipline            | Maintains fidelity between approved Pen screens in design/qahal.pen and production. |
+| Design token consistency        | Preserves coherent brand and interaction language across features.                  |
 
 ## Soft Skills and Workflow Skills
 

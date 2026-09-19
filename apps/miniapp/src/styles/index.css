@@ -27,6 +27,7 @@
   --color-ink-950: #050d29;
   --color-paper: #f7f5f1;
   --color-white: #ffffff;
+  --color-black: #000000;
   --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: var(--font-body);
   --font-hebrew: var(--font-body);
@@ -164,7 +165,7 @@
 
 :root[data-theme-mode='dark'] {
   color-scheme: dark;
-  --background-primary: var(--color-ink-950);
+  --background-primary: var(--color-black);
   --background-surface: var(--color-ink-900);
   --background-muted: var(--color-ink-800);
   --background-selected: var(--color-purple-900);

@@ -106,12 +106,12 @@ This is **non-negotiable**. Read `docs/product/cloudflare-go-live.md` for deploy
 
 ## 5. Design System
 
-**DESIGN.md is the canonical design policy and inventory.** CSS tokens implement it. Once a screen is approved in Pen, Pen is its visual source of truth; code owns behavior, data, accessibility behavior and architecture.
+**DESIGN.md is the canonical design policy and inventory.** [`design/qahal.pen`](design/qahal.pen) is the draft visual specification. CSS tokens implement the executable palette; they do not yet match every Phase 2 role (Purple 800 actions, purple inputs). Once a screen is approved in Pen, Pen is its visual source of truth; code owns behavior, data, accessibility behavior and architecture.
 
-- Always consult DESIGN.md for UI, styling or branding changes.
-- Use Manrope and Qahal Purple/Ink/Paper. Playfair/Inter and nautical parchment directions are superseded.
-- Follow the light/dark, Hebrew, token and accessibility requirements in DESIGN.md.
-- Phase 1 establishes foundations only; Pen materialization requires the separately requested next phase.
+- Always consult DESIGN.md and the live Pen file for UI, styling or branding changes.
+- Use Manrope, Purple/Ink/Paper and Black (dark ground only). Action is Purple 800. Playfair/Inter and nautical parchment directions are superseded.
+- Follow the light/dark, Hebrew, sheet layout, splash, Qahal details, endorsement and accessibility requirements in DESIGN.md.
+- Access `.pen` files only through the Pen MCP. Do not hand-author them or reuse historical Paper IDs.
 
 ---
 
