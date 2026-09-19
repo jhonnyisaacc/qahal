@@ -1,5 +1,7 @@
 # Qahal redesign: controlled access and list-based discovery
 
+Product and access decisions below are historical implementation intent. Current visual policy is [DESIGN.md](../../DESIGN.md) v2.1; draft screens are [`design/qahal.pen`](../../design/qahal.pen).
+
 ## Decisions
 
 - Telegram Mini App identity remains the only production sign-in, validated on the Worker.

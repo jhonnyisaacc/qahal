@@ -145,7 +145,7 @@ Before release:
 
 ## Design-to-Code Workflow (Telegram Compliant)
 
-Follow DESIGN.md and docs/product/paper-to-code.md for approved Pen visuals and implementation. Keep AppRoot, safe areas, ready/expand, theme subscriptions, haptics, location permissions and real Telegram WebView QA. Code remains authoritative for accessibility behavior and API contracts. Phase 1 is foundations only.
+Follow DESIGN.md and docs/product/paper-to-code.md. Draft screens live in design/qahal.pen. Keep AppRoot, safe areas, ready/expand, theme subscriptions, haptics, location permissions and real Telegram WebView QA. Code remains authoritative for accessibility behavior and API contracts. Do not treat the running miniapp as the visual source of truth while Pen is ahead of implementation.
 
 ## Change Management and Flexibility
 

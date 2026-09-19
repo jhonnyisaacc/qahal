@@ -1,6 +1,6 @@
 # ONBOARDING-FLOW.md — New State-Based Onboarding
 
-Historical onboarding behavior proposal. Verify implementation against apps/miniapp/src/app/useAppFlow.ts and the owning screens; map and pending-implementation statements below are historical. Current visual policy and screen inventory live in [DESIGN.md](../DESIGN.md).
+Current onboarding behavior: [docs/product/ux.md](./product/ux.md). Visuals: [DESIGN.md](../DESIGN.md) and [`design/qahal.pen`](../design/qahal.pen). Verify remaining implementation against `apps/miniapp/src/app/useAppFlow.ts`.
 
 ---
 
@@ -32,17 +32,23 @@ Historical onboarding behavior proposal. Verify implementation against apps/mini
   2. Do you believe that Yeshua is The Prophet written by Mosheh?  
      ¿Crees que Yeshua es El Profeta escrito por Moshé?
 
-- After answering, the user proceeds directly to the **data onboarding screen** (name + city).
+- After answering, the user proceeds directly to the **data onboarding screen** (name, then city). There is no language selector; locale follows Telegram.
 - On the **Home screen**, these users:
   - Cannot send join requests to congregations
-  - Cannot contact people on the map
+  - Cannot contact nearby people
   - See a message: "A community leader from your country will contact you soon."
 - These users are marked with a special profile flag (`emunahLevel: "starting"`).
 
-### If user selects **"Experienced in the Emunah"** (`experienced`) or **"Congregation leader"** (`leader`)
+### If user selects **"Experienced in the Emunah"** (`experienced`)
 
-- The **full 7-question** doctrinal questionnaire is shown (same as current behavior).
+- The **full 7-question** doctrinal questionnaire is shown, then name and city.
 - Full access to all features after completing onboarding.
+
+### If user selects **"Congregation leader"** (`leader`)
+
+- After the state screen they go to **Endorsement** (Pen `KLY1B`): search and name two verified community leaders.
+- They then complete the full 7-question questionnaire and name/city.
+- They cannot create a Qahal until endorsed or manually verified. See section 3.
 
 ---
 
@@ -51,13 +57,11 @@ Historical onboarding behavior proposal. Verify implementation against apps/mini
 If the user selects **"Congregation leader"** (`leader`):
 
 - They **cannot** create a new Qahal immediately.
-- After completing onboarding, they see a message:
-
-  > "To lead a congregation, you must first meet with the leaders of the congregations in your country. A national leader will contact you."
-
-- When the user is approved by the national leadership:
-  - They receive the ability to create a Qahal.
-  - A message is sent to **all current congregation leaders** in that country notifying them of the new leader.
+- After the state screen they go to **Endorsement**: search and name two verified community leaders who know them.
+- Those two leaders see the request on **Home** and can open it, Contact on Telegram, then Endorse or Decline.
+- Until endorsed (or approved manually at the start), they do not receive the verified leader mark and cannot create a Qahal.
+- When endorsed or manually verified:
+  - They receive the verified mark and the ability to create a Qahal.
 
 ---
 
@@ -67,17 +71,18 @@ If the user selects **"Congregation leader"** (`leader`):
 - New field: `emunahLevelApproved: boolean` (for leaders)
 - New component: `OnboardingStateScreen.tsx`
 - Modify `OnboardingQuestionsScreen.tsx` to accept a prop for reduced question set.
-- Update `HomeScreen.tsx`, `MapScreen.tsx`, and join request logic to respect `emunahState === "starting"`.
-- Update `ManageQahalScreen.tsx` creation flow to block leaders until approved.
+- Update `HomeScreen.tsx` and join request logic to respect `emunahState === "starting"`.
+- Update `ManageQahalScreen.tsx` creation flow to block leaders until endorsed or manually verified.
+- Persist endorsement requests so the two named leaders see them on Home.
 
 ---
 
 ## 5. Future Considerations
 
-- Backend endpoint to approve/reject leader requests
-- Notification system to national leaders and country congregation leaders
-- Badge or visual indicator for "Starting in the Emunah" users
+- Backend endpoints to create, accept and decline endorsement requests
+- Manual operator verification of leaders (already sketched in `apps/worker/scripts/operator.ts`)
+- Visual verified mark on leader names (Pen `LsKT9`)
 
 ---
 
-**Status:** Design phase complete. Implementation pending.
+**Status:** Specified in DESIGN.md v2.1 and `design/qahal.pen`. Implementation pending.

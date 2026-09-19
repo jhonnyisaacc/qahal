@@ -35,7 +35,7 @@ The goal is to move faith from digital screens to real-life encounters: connecti
 ### NEVER:
 
 - Use cold, modern, or corporate map styles.
-- Depart from the canonical DESIGN.md system (Manrope and Purple/Ink/Paper) or approved Pen visuals.
+- Depart from the canonical DESIGN.md system (Manrope, Purple/Ink/Paper/Black, Purple 800 actions) or the draft Pen file `design/qahal.pen`.
 
 ### ALWAYS:
 

@@ -12,7 +12,7 @@ This file provides project-specific guidance for Cursor when working on the Qaha
 1. **Design System**
    - Never implement UI or styling changes without consulting `DESIGN.md`.
    - Use only the colors, fonts, spacing, and component patterns defined in DESIGN.md.
-   - The Hebrew Qof (ק) symbol and purple/navy/light palette are the new brand identity.
+   - Brand materials are Purple, Ink, Paper and Black (dark ground). The extracted Qof mark is the splash/logo. No avatars or entity photos.
 
 2. **Runtime**
    - Use **Bun** exclusively (`bun install`, `bun run`, `bunx`).
@@ -42,4 +42,4 @@ This file provides project-specific guidance for Cursor when working on the Qaha
 
 ## Design authority
 
-Follow DESIGN.md for Manrope, Purple/Ink/Paper, tokens and the current screen inventory. The canonical future Pen workflow is docs/product/paper-to-code.md. Historical Paper references are not approved Pen visuals.
+Follow DESIGN.md for Manrope, Purple/Ink/Paper/Black, Purple 800 actions, sheet layouts and the current screen inventory. Live draft screens are design/qahal.pen (Pen MCP only). The workflow is docs/product/paper-to-code.md. Historical Paper references are not approved Pen visuals.

@@ -69,4 +69,4 @@ To test mobile behavior in a desktop browser, open dev tools device emulation an
 
 ## Design system and Pen workflow
 
-[DESIGN.md](DESIGN.md) contains the canonical system, audit and screen inventory. The future Pen workflow is documented in [docs/product/paper-to-code.md](docs/product/paper-to-code.md). Phase 1 consolidates foundations; no Pen screens have been created or approved.
+[DESIGN.md](DESIGN.md) is the canonical system, audit and screen inventory (v2.1). Live draft screens live in [design/qahal.pen](design/qahal.pen). The Pen workflow is [docs/product/paper-to-code.md](docs/product/paper-to-code.md). Phase 2 drafted phones and components; nothing in Pen is approved or implemented in the miniapp yet. Dark canvas is Black. Actions in the spec are Purple 800 liquid-glass pills. Do not revive map screens or entity photos.

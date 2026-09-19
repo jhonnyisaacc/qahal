@@ -24,6 +24,10 @@ Cloudflare D1 is the primary database for users and location records.
 
 R2 and KV are reserved for future file and cache workloads.
 
+## Design
+
+Visual policy: [DESIGN.md](../../DESIGN.md). Draft screens and components: [design/qahal.pen](../../design/qahal.pen). Workflow: [docs/product/paper-to-code.md](../product/paper-to-code.md). Discovery is list-based (Local/Online). There is no active map.
+
 ## Deployment
 
 - Frontend deploy target: Cloudflare Pages
