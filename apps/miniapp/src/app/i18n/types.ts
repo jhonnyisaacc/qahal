@@ -1,5 +1,5 @@
-export type LanguageCode = "en" | "es" | "he";
-export type AppLocale = "en" | "es";
+export type LanguageCode = 'en' | 'es' | 'he';
+export type AppLocale = 'en' | 'es';
 
 export interface Messages {
   common: {
@@ -65,6 +65,8 @@ export interface Messages {
   };
   home: {
     title: string;
+    startingNotice: string;
+    leaderApprovalNotice: string;
     createQahalTitle: string;
     createQahalBody: string;
     createQahalCta: string;
@@ -76,6 +78,7 @@ export interface Messages {
     member: string;
     contact: string;
     join: string;
+    joinBlocked: string;
     requested: string;
     undoRequest: string;
     badgesTitle: string;
@@ -128,6 +131,7 @@ export interface Messages {
     noPermissionBody: string;
     noPermissionCta: string;
     telegramMessage: string;
+    contactBlocked: string;
     yearsInEmunahShort: (years: number) => string;
   };
   profile: {
@@ -148,6 +152,15 @@ export interface Messages {
     roleNoneDesc: string;
     roleMemberDesc: string;
     roleLeaderDesc: string;
+    demoScenariosTitle: string;
+    demoScenariosBody: string;
+    demoScenariosPlaceholder: string;
+    demoScenariosLoading: string;
+    demoScenariosApply: string;
+    demoScenariosApplying: string;
+    demoScenariosLoadFailed: string;
+    demoScenariosApplyFailed: string;
+    demoScenariosApplied: string;
     localDataTitle: string;
     localDataBody: string;
     localDataDelete: string;

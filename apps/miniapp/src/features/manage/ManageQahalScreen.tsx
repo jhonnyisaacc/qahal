@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import type { ManagedCommunity } from "../../lib/api";
-import { api } from "../../lib/api";
-import { useI18n } from "../../app/i18n";
+import { MeetingLink } from './MeetingLink';
+import { useEffect, useMemo, useState } from 'react';
+import type { ManagedCommunity } from '../../lib/api';
+import { api } from '../../lib/api';
+import { useI18n } from '../../app/i18n';
 
 interface ManageQahalScreenProps {
   telegramId: number;
@@ -58,17 +59,17 @@ const ProfileIcon = ({ color }: { color: string }) => (
 );
 
 const dayOptions = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
+  { value: 0, label: 'Sunday' },
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
 ];
 
 const toTimeMinutes = (value: string): number => {
-  const [hoursRaw, minutesRaw] = value.split(":");
+  const [hoursRaw, minutesRaw] = value.split(':');
   const hours = Number(hoursRaw);
   const minutes = Number(minutesRaw);
   if (
@@ -88,8 +89,8 @@ const formatMinutes = (value: number): string => {
   const safe = Math.max(0, Math.min(1439, value));
   const hours = Math.floor(safe / 60)
     .toString()
-    .padStart(2, "0");
-  const minutes = (safe % 60).toString().padStart(2, "0");
+    .padStart(2, '0');
+  const minutes = (safe % 60).toString().padStart(2, '0');
   return `${hours}:${minutes}`;
 };
 
@@ -106,11 +107,9 @@ export const ManageQahalScreen = ({
   const { t } = useI18n();
   const [isEditingName, setIsEditingName] = useState(false);
   const [localCommunityName, setLocalCommunityName] = useState(
-    managedCommunity?.communityName ?? "",
+    managedCommunity?.communityName ?? '',
   );
-  const [meetingSlots, setMeetingSlots] = useState(
-    managedCommunity?.meetingSlots ?? [],
-  );
+  const [meetingSlots, setMeetingSlots] = useState(managedCommunity?.meetingSlots ?? []);
   const [members, setMembers] = useState(managedCommunity?.members ?? []);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,11 +117,55 @@ export const ManageQahalScreen = ({
   const [showWeekdaySelector, setShowWeekdaySelector] = useState(false);
   const [pendingWeekday, setPendingWeekday] = useState<number>(1);
   const [showTimeSelector, setShowTimeSelector] = useState(false);
-  const [timeDraft, setTimeDraft] = useState("19:00");
+  const [timeDraft, setTimeDraft] = useState('19:00');
 
   const currentCommunityId = managedCommunity?.communityId ?? managedCommunityId;
-  const hasBackendCommunity = typeof currentCommunityId === "number";
+  const hasBackendCommunity = typeof currentCommunityId === 'number';
   const hasAccess = canManageQahal || profileTestingEnabled;
+  const compactCardStyle = {
+    borderRadius: 18,
+    padding: '16px 18px',
+    background: 'var(--theme-card-bg)',
+    border: '1px solid var(--theme-card-border)',
+    boxShadow: '0 4px 14px rgba(30, 24, 18, 0.04)',
+  };
+  const accentCardStyle = {
+    ...compactCardStyle,
+    border: '1px solid rgba(125, 90, 242, 0.14)',
+  };
+  const innerSurfaceStyle = {
+    borderRadius: 14,
+    padding: '12px 14px',
+    background: 'var(--theme-bg-main)',
+    border: '1px solid var(--theme-surface-warm-border)',
+  };
+  const compactCircleButtonStyle = {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    border: '1px solid rgba(125, 90, 242, 0.14)',
+    background: 'transparent',
+    color: 'var(--theme-accent)',
+  };
+  const secondaryActionStyle = {
+    height: 38,
+    borderRadius: 10,
+    border: '1px solid var(--theme-surface-warm-border)',
+    background: 'transparent',
+    color: 'var(--theme-text-primary)',
+    fontSize: 12,
+    fontWeight: 600,
+  };
+  const primaryActionStyle = {
+    height: 38,
+    borderRadius: 10,
+    border: '1px solid var(--theme-button-primary-border)',
+    background: 'var(--theme-button-primary-bg)',
+    color: 'var(--theme-button-primary-text)',
+    fontSize: 12,
+    fontWeight: 600,
+    boxShadow: 'var(--theme-button-primary-shadow)',
+  };
 
   const sortedSlots = useMemo(() => {
     return [...meetingSlots].sort((a, b) => {
@@ -153,7 +196,7 @@ export const ManageQahalScreen = ({
   };
 
   useEffect(() => {
-    setLocalCommunityName(managedCommunity?.communityName ?? "");
+    setLocalCommunityName(managedCommunity?.communityName ?? '');
     setMeetingSlots(managedCommunity?.meetingSlots ?? []);
     setMembers(managedCommunity?.members ?? []);
   }, [managedCommunity]);
@@ -183,9 +226,7 @@ export const ManageQahalScreen = ({
         slots: nextSlots
           .slice()
           .sort((a, b) =>
-            a.weekday === b.weekday
-              ? a.timeMinutes - b.timeMinutes
-              : a.weekday - b.weekday,
+            a.weekday === b.weekday ? a.timeMinutes - b.timeMinutes : a.weekday - b.weekday,
           )
           .map((slot) => ({
             weekday: slot.weekday,
@@ -203,7 +244,7 @@ export const ManageQahalScreen = ({
 
   const startMeetingSlotSelector = () => {
     setPendingWeekday(1);
-    setTimeDraft("19:00");
+    setTimeDraft('19:00');
     setShowWeekdaySelector(true);
     setShowTimeSelector(false);
   };
@@ -273,12 +314,12 @@ export const ManageQahalScreen = ({
   };
 
   const promptAddMember = async () => {
-    const usernameAnswer = window.prompt("Enter Telegram username", "");
+    const usernameAnswer = window.prompt('Enter Telegram username', '');
     if (usernameAnswer === null) {
       return;
     }
 
-    const normalized = usernameAnswer.trim().replace(/^@/, "");
+    const normalized = usernameAnswer.trim().replace(/^@/, '');
     if (!normalized) {
       return;
     }
@@ -347,15 +388,14 @@ export const ManageQahalScreen = ({
 
   return (
     <section className="relative flex h-[100dvh] flex-col overflow-hidden">
+      <div className="absolute inset-0" style={{ background: 'var(--theme-bg-main)' }} />
+
       <div className="relative z-10 flex flex-1 flex-col overflow-y-auto pb-[120px]">
-        <header
-          className="flex items-center gap-[10px]"
-          style={{ padding: "64px 24px 16px 24px" }}
-        >
+        <header className="flex items-center gap-[10px]" style={{ padding: '60px 24px 12px 24px' }}>
           <button
             type="button"
             onClick={onGoHome}
-            className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-[#C9A46F52] bg-transparent text-[var(--theme-text-primary)]"
+            className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-[var(--brand-purple)33] bg-transparent text-[var(--theme-text-primary)]"
             aria-label={t.common.back}
           >
             <BackArrowIcon />
@@ -363,35 +403,49 @@ export const ManageQahalScreen = ({
           <h1
             className="qahal-display"
             style={{
-              fontSize: 32,
-              lineHeight: "38px",
+              fontSize: 30,
+              lineHeight: '36px',
               fontWeight: 700,
-              color: "var(--theme-text-primary)",
+              color: 'var(--theme-text-primary)',
             }}
           >
             {t.manageQahal.title}
           </h1>
         </header>
+        {hasAccess && currentCommunityId && (
+          <div className="px-6">
+            <MeetingLink communityId={currentCommunityId} telegramId={telegramId} editable />
+          </div>
+        )}
 
-        <div className="flex flex-col gap-[16px] px-[24px]">
-          <p style={{ fontSize: 13, color: "var(--theme-text-secondary)" }}>
+        <div className="flex flex-col gap-[12px] px-[24px]">
+          <p style={{ fontSize: 13, color: 'var(--theme-text-secondary)' }}>
             {t.manageQahal.subtitle}
           </p>
 
           {!hasAccess ? (
-            <p style={{ fontSize: 14, color: "#7C2D12" }}>{t.manageQahal.notLeader}</p>
+            <div
+              style={{
+                ...compactCardStyle,
+                border: '1px solid rgba(124, 45, 18, 0.16)',
+                color: '#7C2D12',
+                fontSize: 14,
+              }}
+            >
+              {t.manageQahal.notLeader}
+            </div>
           ) : null}
 
           {hasAccess ? (
-            <div className="flex flex-col gap-[16px]">
-              <div className="flex flex-col gap-[8px] border-b border-[#C9A46F52] pb-[12px]">
+            <div className="flex flex-col gap-[12px]">
+              <div className="flex flex-col gap-[12px]" style={accentCardStyle}>
                 <div className="flex items-center justify-between">
                   <label
                     className="qahal-display"
                     style={{
                       fontSize: 14,
-                      letterSpacing: "0.06em",
-                      color: "var(--theme-text-secondary)",
+                      letterSpacing: '0.06em',
+                      color: 'var(--theme-text-secondary)',
                     }}
                   >
                     {t.manageQahal.communityNameLabel}
@@ -399,7 +453,7 @@ export const ManageQahalScreen = ({
                   <button
                     type="button"
                     onClick={() => setIsEditingName((prev) => !prev)}
-                    className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-[#C9A46F52] bg-transparent text-[var(--theme-accent)]"
+                    className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-[var(--brand-purple)33] bg-transparent text-[var(--theme-accent)]"
                     aria-label={t.profile.edit}
                   >
                     <PencilIcon />
@@ -412,39 +466,48 @@ export const ManageQahalScreen = ({
                       value={localCommunityName}
                       onChange={(event) => setLocalCommunityName(event.target.value)}
                       placeholder={t.manageQahal.communityNamePlaceholder}
-                      className="h-[40px] flex-1 rounded-[10px] border border-[#C9A46F52] bg-transparent px-[10px] text-[14px] text-[var(--theme-text-primary)] outline-none"
+                      className="h-[40px] flex-1 rounded-[10px] border border-[var(--brand-purple)33] bg-transparent px-[10px] text-[14px] text-[var(--theme-text-primary)] outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => {
                         void saveName();
-                        setIsEditingName(false);
                       }}
                       disabled={saving || !hasBackendCommunity}
                       className="h-[40px] rounded-[10px] px-[12px] text-[12px] font-semibold text-white"
                       style={{
                         background:
-                          saving || !hasBackendCommunity ? "#9CA3AF" : "#1E5C5A",
+                          saving || !hasBackendCommunity
+                            ? '#9CA3AF'
+                            : 'var(--theme-button-primary-bg)',
+                        boxShadow:
+                          saving || !hasBackendCommunity
+                            ? 'none'
+                            : 'var(--theme-button-primary-shadow)',
                       }}
                     >
                       {t.manageQahal.saveName}
                     </button>
                   </div>
                 ) : (
-                  <p style={{ fontSize: 18, fontWeight: 700, color: "var(--theme-text-primary)" }}>
-                    {localCommunityName || t.manageQahal.communityNamePlaceholder}
-                  </p>
+                  <div style={innerSurfaceStyle}>
+                    <p
+                      style={{ fontSize: 17, fontWeight: 700, color: 'var(--theme-text-primary)' }}
+                    >
+                      {localCommunityName || t.manageQahal.communityNamePlaceholder}
+                    </p>
+                  </div>
                 )}
               </div>
 
-              <div className="flex flex-col gap-[10px] border-b border-[#C9A46F52] pb-[12px]">
+              <div className="flex flex-col gap-[12px]" style={compactCardStyle}>
                 <div className="flex items-center justify-between">
                   <h2
                     className="qahal-display"
                     style={{
                       fontSize: 14,
-                      letterSpacing: "0.06em",
-                      color: "var(--theme-text-secondary)",
+                      letterSpacing: '0.06em',
+                      color: 'var(--theme-text-secondary)',
                     }}
                   >
                     {t.manageQahal.meetingTimesTitle}
@@ -454,7 +517,8 @@ export const ManageQahalScreen = ({
                     onClick={() => {
                       startMeetingSlotSelector();
                     }}
-                    className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-[#C9A46F52] bg-transparent text-[var(--theme-accent)]"
+                    className="flex items-center justify-center"
+                    style={compactCircleButtonStyle}
                     aria-label={t.manageQahal.addSlot}
                   >
                     +
@@ -462,7 +526,7 @@ export const ManageQahalScreen = ({
                 </div>
 
                 {showWeekdaySelector ? (
-                  <div className="flex items-center gap-[8px]">
+                  <div className="flex items-center gap-[8px]" style={innerSurfaceStyle}>
                     <select
                       value={pendingWeekday}
                       onChange={(event) => {
@@ -471,7 +535,12 @@ export const ManageQahalScreen = ({
                           setPendingWeekday(selected);
                         }
                       }}
-                      className="h-[38px] rounded-[10px] border border-[#C9A46F52] bg-transparent px-[10px] text-[13px] text-[var(--theme-text-primary)] outline-none"
+                      className="h-[38px] rounded-[10px] px-[10px] text-[13px] text-[var(--theme-text-primary)] outline-none"
+                      style={{
+                        flex: 1,
+                        background: 'transparent',
+                        border: '1px solid var(--theme-surface-warm-border)',
+                      }}
                       aria-label={t.manageQahal.dayLabel}
                     >
                       {dayOptions.map((option) => (
@@ -483,7 +552,8 @@ export const ManageQahalScreen = ({
                     <button
                       type="button"
                       onClick={() => proceedToTimePicker(pendingWeekday)}
-                      className="h-[38px] rounded-[10px] bg-[var(--theme-accent)] px-[12px] text-[12px] font-semibold text-white"
+                      className="px-[12px]"
+                      style={primaryActionStyle}
                     >
                       {t.common.continue}
                     </button>
@@ -491,12 +561,17 @@ export const ManageQahalScreen = ({
                 ) : null}
 
                 {showTimeSelector ? (
-                  <div className="flex items-center gap-[8px]">
+                  <div className="flex items-center gap-[8px]" style={innerSurfaceStyle}>
                     <input
                       type="time"
                       value={timeDraft}
                       onChange={(event) => setTimeDraft(event.target.value)}
-                      className="h-[38px] rounded-[10px] border border-[#C9A46F52] bg-transparent px-[10px] text-[13px] text-[var(--theme-text-primary)] outline-none"
+                      className="h-[38px] rounded-[10px] px-[10px] text-[13px] text-[var(--theme-text-primary)] outline-none"
+                      style={{
+                        flex: 1,
+                        background: 'transparent',
+                        border: '1px solid var(--theme-surface-warm-border)',
+                      }}
                       aria-label={t.manageQahal.timeLabel}
                       inputMode="numeric"
                     />
@@ -505,7 +580,8 @@ export const ManageQahalScreen = ({
                       onClick={() => {
                         void addSlotFromSelections();
                       }}
-                      className="h-[38px] rounded-[10px] bg-[var(--theme-accent)] px-[12px] text-[12px] font-semibold text-white"
+                      className="px-[12px]"
+                      style={primaryActionStyle}
                     >
                       {t.manageQahal.addSlot}
                     </button>
@@ -514,14 +590,11 @@ export const ManageQahalScreen = ({
 
                 <div className="flex flex-wrap gap-[8px]">
                   {sortedSlots.length === 0 ? (
-                    <p style={{ fontSize: 13, color: "var(--theme-text-secondary)" }}>
-                      Not set
-                    </p>
+                    <p style={{ fontSize: 13, color: 'var(--theme-text-secondary)' }}>Not set</p>
                   ) : (
                     sortedSlots.map((slot) => {
                       const dayLabel =
-                        dayOptions.find((option) => option.value === slot.weekday)?.label ??
-                        "?";
+                        dayOptions.find((option) => option.value === slot.weekday)?.label ?? '?';
                       return (
                         <button
                           key={slot.id}
@@ -529,7 +602,12 @@ export const ManageQahalScreen = ({
                           onClick={() => {
                             void removeSlot(slot.id);
                           }}
-                          className="rounded-full border border-[#1E5C5A40] bg-[#1E5C5A1A] px-[10px] py-[6px] text-[12px] text-[#1E5C5A]"
+                          className="rounded-full px-[10px] py-[6px] text-[12px]"
+                          style={{
+                            background: 'var(--theme-bg-main)',
+                            border: '1px solid rgba(125, 90, 242, 0.14)',
+                            color: 'var(--brand-accent)',
+                          }}
                         >
                           {dayLabel} {formatMinutes(slot.timeMinutes)} x
                         </button>
@@ -539,16 +617,14 @@ export const ManageQahalScreen = ({
                 </div>
               </div>
 
-              
-
-              <div className="flex flex-col gap-[10px]">
+              <div className="flex flex-col gap-[12px]" style={compactCardStyle}>
                 <div className="flex items-center justify-between">
                   <h2
                     className="qahal-display"
                     style={{
                       fontSize: 14,
-                      letterSpacing: "0.06em",
-                      color: "var(--theme-text-secondary)",
+                      letterSpacing: '0.06em',
+                      color: 'var(--theme-text-secondary)',
                     }}
                   >
                     {t.manageQahal.membersTitle}
@@ -558,40 +634,38 @@ export const ManageQahalScreen = ({
                     onClick={() => {
                       void promptAddMember();
                     }}
-                    className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-[#C9A46F52] bg-transparent text-[var(--theme-accent)]"
+                    className="flex items-center justify-center"
+                    style={compactCircleButtonStyle}
                     aria-label={t.manageQahal.addMember}
                   >
                     +
                   </button>
                 </div>
 
-              <div className="flex flex-col gap-[6px]">
-                {members.length === 0 ? (
-                  <p style={{ fontSize: 13, color: "var(--theme-text-secondary)" }}>
-                    {t.manageQahal.noMembers}
-                  </p>
-                ) : (
-                  members.map((member) => (
-                    <div
-                      key={member.telegramId}
-                      className="rounded-[10px] border border-[#C9A46F52] bg-transparent px-[10px] py-[8px]"
-                    >
-                      <div
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: "var(--theme-text-primary)",
-                        }}
-                      >
-                        {member.firstName || member.username || t.manageQahal.unknownMember}
+                <div className="flex flex-col gap-[8px]">
+                  {members.length === 0 ? (
+                    <p style={{ fontSize: 13, color: 'var(--theme-text-secondary)' }}>
+                      {t.manageQahal.noMembers}
+                    </p>
+                  ) : (
+                    members.map((member) => (
+                      <div key={member.telegramId} style={innerSurfaceStyle}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: 'var(--theme-text-primary)',
+                          }}
+                        >
+                          {member.firstName || member.username || t.manageQahal.unknownMember}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--theme-text-secondary)' }}>
+                          {member.username ? `@${member.username}` : '-'}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--theme-text-secondary)" }}>
-                        {member.username ? `@${member.username}` : "-"}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-[8px]">
@@ -601,15 +675,17 @@ export const ManageQahalScreen = ({
                     void loadCommunity();
                   }}
                   disabled={loading || !hasBackendCommunity}
-                  className="h-[38px] rounded-[10px] border border-[#C9A46F52] bg-transparent px-[10px] text-[12px] font-semibold text-[var(--theme-text-primary)]"
+                  className="px-[12px]"
+                  style={secondaryActionStyle}
                 >
                   {t.manageQahal.refresh}
                 </button>
                 {statusMessage ? (
-                  <p style={{ fontSize: 12, color: "#4B5563" }}>{statusMessage}</p>
+                  <p style={{ fontSize: 12, color: 'var(--theme-text-secondary)' }}>
+                    {statusMessage}
+                  </p>
                 ) : null}
               </div>
-
             </div>
           ) : null}
         </div>
@@ -618,8 +694,10 @@ export const ManageQahalScreen = ({
       <div
         className="absolute bottom-0 left-0 right-0 z-20 flex flex-col items-center"
         style={{
-          backgroundImage: "var(--theme-nav-gradient)",
-          paddingBottom: 24,
+          background: 'var(--theme-nav-bg)',
+          borderTop: '1px solid var(--theme-card-border)',
+          boxShadow: 'var(--theme-nav-shadow)',
+          paddingBottom: 'calc(var(--safe-area-bottom) + 16px)',
           paddingTop: 20,
         }}
       >
@@ -635,47 +713,34 @@ export const ManageQahalScreen = ({
             <span
               style={{
                 fontSize: 11,
-                color: "var(--theme-accent)",
+                color: 'var(--theme-accent)',
                 minHeight: 16,
-                lineHeight: "16px",
+                lineHeight: '16px',
               }}
             >
               {t.common.home}
             </span>
           </button>
-          <button
-            type="button"
-            className="flex w-[84px] flex-col items-center gap-[4px]"
-            onClick={onGoMap}
-          >
-            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-full">
-              <MapIcon color="var(--theme-accent)" />
-            </div>
-            <span
+
+          <button type="button" className="flex w-[84px] flex-col items-center gap-[4px]">
+            <div
+              className="flex items-center justify-center rounded-full"
               style={{
-                fontSize: 11,
-                color: "var(--theme-accent)",
-                minHeight: 16,
-                lineHeight: "16px",
+                width: 48,
+                height: 48,
+                background: 'var(--theme-accent)',
+                boxShadow: 'var(--theme-button-primary-shadow)',
               }}
             >
-              {t.common.map}
-            </span>
-          </button>
-          <button
-            type="button"
-            className="flex w-[84px] flex-col items-center gap-[4px]"
-            onClick={onGoProfile}
-          >
-            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-full">
-              <ProfileIcon color="var(--theme-accent)" />
+              <ProfileIcon color="#F5F0E8" />
             </div>
             <span
               style={{
                 fontSize: 11,
-                color: "var(--theme-accent)",
+                color: 'var(--theme-accent)',
                 minHeight: 16,
-                lineHeight: "16px",
+                lineHeight: '16px',
+                visibility: 'hidden',
               }}
             >
               {t.common.profile}
@@ -687,7 +752,7 @@ export const ManageQahalScreen = ({
             width: 134,
             height: 5,
             borderRadius: 100,
-            background: "#1C2526",
+            background: 'var(--theme-text-primary)',
             opacity: 0.2,
           }}
         />

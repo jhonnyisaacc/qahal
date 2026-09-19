@@ -1,21 +1,23 @@
-import { Hono } from "hono";
+import { database } from '../lib/db';
+import { coarse, readProfile, readPrivate, privateStatement } from '../services/privateData';
+import { usernameIndex } from '../services/encryption';
+import { Hono } from 'hono';
 import {
+  membershipRequestSchema,
+  meetingLinkSchema,
   addCommunityMemberByUsernameSchema,
   createCommunitySchema,
   meetingSlotsUpsertSchema,
   nearbyQuerySchema,
   renameCommunitySchema,
-} from "@qahal/shared";
-import type { Bindings } from "../types/env";
+} from '@qahal/shared';
+import type { Bindings } from '../types/env';
 import {
   getNearestSeedLocation,
   getSeedLeadersByCity,
   getSeedLocationByCity,
-} from "../services/seedData";
-import {
-  requireTelegramIdentity,
-  resolveOptionalTelegramIdentity,
-} from "../lib/telegramIdentity";
+} from '../services/seedData';
+import { requireTelegramIdentity, resolveOptionalTelegramIdentity } from '../lib/telegramIdentity';
 
 export const communitiesRoute = new Hono<{ Bindings: Bindings }>();
 
@@ -30,15 +32,14 @@ type D1Like = {
 };
 
 const hasD1 = (db: unknown): db is D1Like => {
-  return typeof db === "object" && db !== null && "prepare" in db;
+  return typeof db === 'object' && db !== null && 'prepare' in db;
 };
 
-const distanceKm = (
-  fromLat: number,
-  fromLng: number,
-  toLat: number,
-  toLng: number,
-): number => {
+const normalizeApprovalFlag = (value: unknown): boolean => {
+  return value === true || value === 1 || value === '1';
+};
+
+const distanceKm = (fromLat: number, fromLng: number, toLat: number, toLng: number): number => {
   const toRadians = (value: number): number => value * (Math.PI / 180);
   const earthRadiusKm = 6371;
   const dLat = toRadians(toLat - fromLat);
@@ -86,218 +87,38 @@ const resolveUserCommunityCapabilities = async (
       .bind(telegramId)
       .first<ManagedRow>(),
   ]);
+  let leaderApprovalPending = false;
+
+  try {
+    type ApprovalRow = {
+      emunahState: string | null;
+      emunahLevelApproved: number | boolean | null;
+    };
+
+    const approvalState = await db
+      .prepare(
+        `SELECT emunah_state as emunahState,
+                emunah_level_approved as emunahLevelApproved
+         FROM users
+         WHERE telegram_id = ?1
+         LIMIT 1`,
+      )
+      .bind(telegramId)
+      .first<ApprovalRow>();
+
+    leaderApprovalPending =
+      approvalState?.emunahState === 'leader' &&
+      !normalizeApprovalFlag(approvalState.emunahLevelApproved);
+  } catch {
+    leaderApprovalPending = true;
+  }
 
   const hasMemberCommunity = Number(memberRows?.count ?? 0) > 0;
 
   return {
-    canCreateQahal: !hasMemberCommunity && !managedCommunity,
+    canCreateQahal: !hasMemberCommunity && !managedCommunity && !leaderApprovalPending,
     managedCommunityId: managedCommunity?.communityId ?? null,
   };
-};
-
-const getNearestCommunitiesFromDb = async (
-  db: D1Like,
-  latitude: number,
-  longitude: number,
-  telegramId?: number,
-) => {
-  type DbCommunityRow = {
-    id: number;
-    name: string;
-    city: string;
-    latitude: number;
-    longitude: number;
-    defaultMemberState: "not_member" | "requested" | "member";
-  };
-
-  const candidates = await db
-    .prepare(
-      `SELECT id,
-              name,
-              city,
-              latitude,
-              longitude,
-              default_member_state as defaultMemberState
-       FROM communities
-       ORDER BY ((latitude - ?1) * (latitude - ?1) + (longitude - ?2) * (longitude - ?2)) ASC
-       LIMIT 8`,
-    )
-    .bind(latitude, longitude)
-    .all<DbCommunityRow>();
-
-  const rows = candidates.results ?? [];
-  if (rows.length === 0) {
-    return [];
-  }
-
-  let capabilities: UserCommunityCapabilities = {
-    canCreateQahal: true,
-    managedCommunityId: null,
-  };
-
-  if (typeof telegramId === "number") {
-    capabilities = await resolveUserCommunityCapabilities(db, telegramId);
-  }
-
-  const membershipByCommunityId = new Map<
-    number,
-    "not_member" | "requested" | "member"
-  >();
-
-  if (typeof telegramId === "number") {
-    type MembershipRow = {
-      communityId: number;
-      status: "not_member" | "requested" | "member";
-    };
-
-    const memberships = await db
-      .prepare(
-        `SELECT community_id as communityId, status
-         FROM user_community_memberships
-         WHERE telegram_id = ?1`,
-      )
-      .bind(telegramId)
-      .all<MembershipRow>();
-
-    for (const membership of memberships.results ?? []) {
-      membershipByCommunityId.set(membership.communityId, membership.status);
-    }
-  }
-
-  const forceNoMembership =
-    typeof telegramId === "number" && membershipByCommunityId.size === 0;
-
-  return rows.slice(0, 3).map((community) => ({
-    id: community.id,
-    name: community.name,
-    city: community.city,
-    distanceKm: Number(
-      distanceKm(
-        latitude,
-        longitude,
-        community.latitude,
-        community.longitude,
-      ).toFixed(1),
-    ),
-    memberState: forceNoMembership
-      ? "not_member"
-      : (membershipByCommunityId.get(community.id) ??
-        community.defaultMemberState ??
-        "not_member"),
-    canManage: capabilities.managedCommunityId === community.id,
-    canCreateQahal: capabilities.canCreateQahal,
-  }));
-};
-
-type DbCityLocation = {
-  city: string;
-  country: string;
-};
-
-const getDbLocation = async (
-  db: D1Like,
-  city: string | undefined,
-  latitude: string | undefined,
-  longitude: string | undefined,
-): Promise<DbCityLocation | null> => {
-  if (city) {
-    const byCity = await db
-      .prepare(
-        `SELECT city, country
-         FROM communities
-         WHERE lower(city) = lower(?1)
-         LIMIT 1`,
-      )
-      .bind(city)
-      .first<DbCityLocation>();
-
-    if (byCity) {
-      return byCity;
-    }
-  }
-
-  if (latitude && longitude) {
-    const lat = Number(latitude);
-    const lng = Number(longitude);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      const nearest = await db
-        .prepare(
-          `SELECT city, country
-           FROM communities
-           ORDER BY ((latitude - ?1) * (latitude - ?1) + (longitude - ?2) * (longitude - ?2)) ASC
-           LIMIT 1`,
-        )
-        .bind(lat, lng)
-        .first<DbCityLocation>();
-
-      if (nearest) {
-        return nearest;
-      }
-    }
-  }
-
-  return null;
-};
-
-const getDbPeopleByCity = async (db: D1Like, city: string) => {
-  type PersonRow = {
-    id: number;
-    name: string;
-    city: string;
-    locationKey: string;
-  };
-  type BadgeRow = {
-    personId: number;
-    kind: string;
-    label: string;
-    years: number | null;
-  };
-
-  const people = await db
-    .prepare(
-      `SELECT id, name, city, location_key as locationKey
-       FROM community_people
-       WHERE lower(city) = lower(?1)
-       ORDER BY name ASC`,
-    )
-    .bind(city)
-    .all<PersonRow>();
-
-  const badges = await db
-    .prepare(
-      `SELECT cpb.person_id as personId,
-              cpb.kind,
-              cpb.label,
-              cpb.years
-       FROM community_person_badges cpb
-       JOIN community_people cp ON cp.id = cpb.person_id
-       WHERE lower(cp.city) = lower(?1)
-       ORDER BY cpb.person_id ASC`,
-    )
-    .bind(city)
-    .all<BadgeRow>();
-
-  const badgesByPersonId = new Map<
-    number,
-    Array<{ kind: string; label: string; years?: number }>
-  >();
-  for (const badge of badges.results ?? []) {
-    const list = badgesByPersonId.get(badge.personId) ?? [];
-    list.push(
-      badge.years === null
-        ? { kind: badge.kind, label: badge.label }
-        : { kind: badge.kind, label: badge.label, years: badge.years },
-    );
-    badgesByPersonId.set(badge.personId, list);
-  }
-
-  return (people.results ?? []).map((person) => ({
-    id: person.id,
-    name: person.name,
-    city: person.city,
-    locationKey: person.locationKey,
-    badges: badgesByPersonId.get(person.id) ?? [],
-  }));
 };
 
 const getManagedCommunityIdByOwner = async (
@@ -338,15 +159,15 @@ const assertLeaderOwnership = async (
 
 const normalizeUsername = (value: string): string => {
   const trimmed = value.trim();
-  return trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  return trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
 };
 
-communitiesRoute.post("/", async (c) => {
+communitiesRoute.post('/', async (c) => {
   const payload = await c.req.json().catch(() => null);
   const parsed = createCommunitySchema.safeParse(payload);
 
   if (!parsed.success) {
-    return c.json({ ok: false, error: "invalid_payload" }, 400);
+    return c.json({ ok: false, error: 'invalid_payload' }, 400);
   }
 
   const identity = await requireTelegramIdentity(c, parsed.data.telegramId);
@@ -355,22 +176,19 @@ communitiesRoute.post("/", async (c) => {
   }
 
   if (!hasD1(c.env.DB)) {
-    return c.json({ ok: false, error: "database_unavailable" }, 503);
+    return c.json({ ok: false, error: 'database_unavailable' }, 503);
   }
 
   const effectiveTelegramId = identity.telegramId;
-  const capabilities = await resolveUserCommunityCapabilities(
-    c.env.DB,
-    effectiveTelegramId,
-  );
+  const capabilities = await resolveUserCommunityCapabilities(c.env.DB, effectiveTelegramId);
 
   if (!capabilities.canCreateQahal) {
-    return c.json({ ok: false, error: "cannot_create_qahal" }, 409);
+    return c.json({ ok: false, error: 'cannot_create_qahal' }, 409);
   }
 
   const { name, city, country, latitude, longitude } = parsed.data;
 
-  await c.env.DB.prepare(
+  const createdCommunity = await c.env.DB.prepare(
     `INSERT INTO communities (
       name,
       city,
@@ -378,30 +196,22 @@ communitiesRoute.post("/", async (c) => {
       latitude,
       longitude,
       default_member_state,
-      owner_telegram_id
-    ) VALUES (?1, ?2, ?3, ?4, ?5, 'not_member', ?6)`,
+      owner_telegram_id, type
+    ) VALUES (?1, ?2, ?3, ?4, ?5, 'not_member', ?6, ?7) RETURNING id, name, city`,
   )
     .bind(
       name.trim(),
-      city.trim(),
-      country.trim(),
-      latitude,
-      longitude,
+      city?.trim() ?? null,
+      country?.trim() ?? null,
+      latitude === undefined ? null : coarse(latitude),
+      longitude === undefined ? null : coarse(longitude),
       effectiveTelegramId,
+      parsed.data.type,
     )
-    .run();
-
-  type CreatedCommunityRow = { id: number; name: string; city: string };
-  const createdCommunity = await c.env.DB.prepare(
-    `SELECT id, name, city
-       FROM communities
-       WHERE id = last_insert_rowid()`,
-  )
-    .bind()
-    .first<CreatedCommunityRow>();
+    .first<{ id: number; name: string; city: string | null }>();
 
   if (!createdCommunity) {
-    return c.json({ ok: false, error: "create_failed" }, 500);
+    return c.json({ ok: false, error: 'create_failed' }, 500);
   }
 
   await c.env.DB.prepare(
@@ -426,11 +236,11 @@ communitiesRoute.post("/", async (c) => {
   });
 });
 
-communitiesRoute.get("/manage", async (c) => {
-  const telegramIdRaw = c.req.query("telegramId");
+communitiesRoute.get('/manage', async (c) => {
+  const telegramIdRaw = c.req.query('telegramId');
   const requestedTelegramId = Number(telegramIdRaw);
   if (!Number.isFinite(requestedTelegramId)) {
-    return c.json({ ok: false, error: "invalid_telegram_id" }, 400);
+    return c.json({ ok: false, error: 'invalid_telegram_id' }, 400);
   }
 
   const identity = await requireTelegramIdentity(c, requestedTelegramId);
@@ -439,20 +249,22 @@ communitiesRoute.get("/manage", async (c) => {
   }
 
   if (!hasD1(c.env.DB)) {
-    return c.json({ ok: false, error: "database_unavailable" }, 503);
+    return c.json({ ok: false, error: 'database_unavailable' }, 503);
   }
 
   const effectiveTelegramId = identity.telegramId;
-  const managedCommunityId = await getManagedCommunityIdByOwner(
-    c.env.DB,
-    effectiveTelegramId,
-  );
+  const managedCommunityId = await getManagedCommunityIdByOwner(c.env.DB, effectiveTelegramId);
 
   if (!managedCommunityId) {
-    return c.json({ ok: false, error: "not_qahal_leader" }, 403);
+    return c.json({ ok: false, error: 'not_qahal_leader' }, 403);
   }
 
-  type CommunityRow = { id: number; name: string; city: string };
+  type CommunityRow = {
+    id: number;
+    name: string;
+    city: string | null;
+    type: 'in_person' | 'online';
+  };
   type SlotRow = { id: number; weekday: number; timeMinutes: number };
   type MemberRow = {
     telegramId: number;
@@ -462,7 +274,7 @@ communitiesRoute.get("/manage", async (c) => {
 
   const [community, slots, members] = await Promise.all([
     c.env.DB.prepare(
-      `SELECT id, name, city
+      `SELECT id, name, city, type
          FROM communities
          WHERE id = ?1
          LIMIT 1`,
@@ -494,7 +306,7 @@ communitiesRoute.get("/manage", async (c) => {
   ]);
 
   if (!community) {
-    return c.json({ ok: false, error: "community_not_found" }, 404);
+    return c.json({ ok: false, error: 'community_not_found' }, 404);
   }
 
   return c.json({
@@ -503,24 +315,36 @@ communitiesRoute.get("/manage", async (c) => {
       communityId: community.id,
       communityName: community.name,
       city: community.city,
+      type: community.type,
       canManage: true,
       canCreateQahal: false,
-      meetingSlots: slots.results ?? [],
-      members: members.results ?? [],
+      meetingSlots:
+        (await readPrivate<{ slots: SlotRow[] }>(c.env, `community:${managedCommunityId}:meetings`))
+          ?.slots ?? [],
+      members: await Promise.all(
+        (members.results ?? []).map(async (member) => {
+          const profile = await readProfile(c.env, member.telegramId);
+          return {
+            telegramId: member.telegramId,
+            firstName: profile.firstName ?? null,
+            username: profile.username ?? null,
+          };
+        }),
+      ),
     },
   });
 });
 
-communitiesRoute.patch("/:communityId", async (c) => {
-  const communityId = Number(c.req.param("communityId"));
+communitiesRoute.patch('/:communityId', async (c) => {
+  const communityId = Number(c.req.param('communityId'));
   if (!Number.isFinite(communityId)) {
-    return c.json({ ok: false, error: "invalid_community_id" }, 400);
+    return c.json({ ok: false, error: 'invalid_community_id' }, 400);
   }
 
   const payload = await c.req.json().catch(() => null);
   const parsed = renameCommunitySchema.safeParse(payload);
   if (!parsed.success) {
-    return c.json({ ok: false, error: "invalid_payload" }, 400);
+    return c.json({ ok: false, error: 'invalid_payload' }, 400);
   }
 
   const identity = await requireTelegramIdentity(c, parsed.data.telegramId);
@@ -529,16 +353,12 @@ communitiesRoute.patch("/:communityId", async (c) => {
   }
 
   if (!hasD1(c.env.DB)) {
-    return c.json({ ok: false, error: "database_unavailable" }, 503);
+    return c.json({ ok: false, error: 'database_unavailable' }, 503);
   }
 
-  const ownsCommunity = await assertLeaderOwnership(
-    c.env.DB,
-    communityId,
-    identity.telegramId,
-  );
+  const ownsCommunity = await assertLeaderOwnership(c.env.DB, communityId, identity.telegramId);
   if (!ownsCommunity) {
-    return c.json({ ok: false, error: "forbidden" }, 403);
+    return c.json({ ok: false, error: 'forbidden' }, 403);
   }
 
   await c.env.DB.prepare(
@@ -553,16 +373,16 @@ communitiesRoute.patch("/:communityId", async (c) => {
   return c.json({ ok: true });
 });
 
-communitiesRoute.put("/:communityId/meeting-slots", async (c) => {
-  const communityId = Number(c.req.param("communityId"));
+communitiesRoute.put('/:communityId/meeting-slots', async (c) => {
+  const communityId = Number(c.req.param('communityId'));
   if (!Number.isFinite(communityId)) {
-    return c.json({ ok: false, error: "invalid_community_id" }, 400);
+    return c.json({ ok: false, error: 'invalid_community_id' }, 400);
   }
 
   const payload = await c.req.json().catch(() => null);
   const parsed = meetingSlotsUpsertSchema.safeParse(payload);
   if (!parsed.success) {
-    return c.json({ ok: false, error: "invalid_payload" }, 400);
+    return c.json({ ok: false, error: 'invalid_payload' }, 400);
   }
 
   const identity = await requireTelegramIdentity(c, parsed.data.telegramId);
@@ -571,54 +391,42 @@ communitiesRoute.put("/:communityId/meeting-slots", async (c) => {
   }
 
   if (!hasD1(c.env.DB)) {
-    return c.json({ ok: false, error: "database_unavailable" }, 503);
+    return c.json({ ok: false, error: 'database_unavailable' }, 503);
   }
 
-  const ownsCommunity = await assertLeaderOwnership(
-    c.env.DB,
-    communityId,
-    identity.telegramId,
-  );
+  const ownsCommunity = await assertLeaderOwnership(c.env.DB, communityId, identity.telegramId);
   if (!ownsCommunity) {
-    return c.json({ ok: false, error: "forbidden" }, 403);
+    return c.json({ ok: false, error: 'forbidden' }, 403);
   }
 
-  await c.env.DB.prepare(
-    `DELETE FROM community_meeting_slots
-       WHERE community_id = ?1`,
-  )
-    .bind(communityId)
-    .run();
-
-  const dedupe = new Set<string>();
-  for (const slot of parsed.data.slots) {
-    const key = `${slot.weekday}:${slot.timeMinutes}`;
-    if (dedupe.has(key)) {
-      continue;
-    }
-    dedupe.add(key);
-
-    await c.env.DB.prepare(
-      `INSERT INTO community_meeting_slots (community_id, weekday, time_minutes)
-         VALUES (?1, ?2, ?3)`,
-    )
-      .bind(communityId, slot.weekday, slot.timeMinutes)
-      .run();
-  }
+  const slots = Array.from(
+    new Map(
+      parsed.data.slots.map((slot) => [`${slot.weekday}:${slot.timeMinutes}`, slot]),
+    ).values(),
+  ).map((slot, index) => ({ ...slot, id: index + 1 }));
+  await database(c.env.DB).batch([
+    await privateStatement(c.env, `community:${communityId}:meetings`, {
+      ...(await readPrivate<Record<string, unknown>>(c.env, `community:${communityId}:meetings`)),
+      slots,
+    }),
+    database(c.env.DB)
+      .prepare('DELETE FROM community_meeting_slots WHERE community_id = ?')
+      .bind(communityId),
+  ]);
 
   return c.json({ ok: true });
 });
 
-communitiesRoute.post("/:communityId/members/by-username", async (c) => {
-  const communityId = Number(c.req.param("communityId"));
+communitiesRoute.post('/:communityId/members/by-username', async (c) => {
+  const communityId = Number(c.req.param('communityId'));
   if (!Number.isFinite(communityId)) {
-    return c.json({ ok: false, error: "invalid_community_id" }, 400);
+    return c.json({ ok: false, error: 'invalid_community_id' }, 400);
   }
 
   const payload = await c.req.json().catch(() => null);
   const parsed = addCommunityMemberByUsernameSchema.safeParse(payload);
   if (!parsed.success) {
-    return c.json({ ok: false, error: "invalid_payload" }, 400);
+    return c.json({ ok: false, error: 'invalid_payload' }, 400);
   }
 
   const identity = await requireTelegramIdentity(c, parsed.data.telegramId);
@@ -627,16 +435,12 @@ communitiesRoute.post("/:communityId/members/by-username", async (c) => {
   }
 
   if (!hasD1(c.env.DB)) {
-    return c.json({ ok: false, error: "database_unavailable" }, 503);
+    return c.json({ ok: false, error: 'database_unavailable' }, 503);
   }
 
-  const ownsCommunity = await assertLeaderOwnership(
-    c.env.DB,
-    communityId,
-    identity.telegramId,
-  );
+  const ownsCommunity = await assertLeaderOwnership(c.env.DB, communityId, identity.telegramId);
   if (!ownsCommunity) {
-    return c.json({ ok: false, error: "forbidden" }, 403);
+    return c.json({ ok: false, error: 'forbidden' }, 403);
   }
 
   const normalizedUsername = normalizeUsername(parsed.data.username);
@@ -651,14 +455,14 @@ communitiesRoute.post("/:communityId/members/by-username", async (c) => {
               username,
               first_name as firstName
        FROM users
-       WHERE lower(username) = lower(?1)
+       WHERE username_index = ?1
        LIMIT 1`,
   )
-    .bind(normalizedUsername)
+    .bind(await usernameIndex(c.env, normalizedUsername))
     .first<UserRow>();
 
   if (!targetUser) {
-    return c.json({ ok: false, error: "user_not_found" }, 404);
+    return c.json({ ok: false, error: 'user_not_found' }, 404);
   }
 
   type ExistingMemberRow = { count: number };
@@ -673,7 +477,7 @@ communitiesRoute.post("/:communityId/members/by-username", async (c) => {
     .first<ExistingMemberRow>();
 
   if (Number(memberElsewhere?.count ?? 0) > 0) {
-    return c.json({ ok: false, error: "already_member_elsewhere" }, 409);
+    return c.json({ ok: false, error: 'already_member_elsewhere' }, 409);
   }
 
   await c.env.DB.prepare(
@@ -690,175 +494,78 @@ communitiesRoute.post("/:communityId/members/by-username", async (c) => {
     ok: true,
     member: {
       telegramId: targetUser.telegramId,
-      firstName: targetUser.firstName,
-      username: targetUser.username,
+      firstName: (await readProfile(c.env, targetUser.telegramId)).firstName ?? null,
+      username: (await readProfile(c.env, targetUser.telegramId)).username ?? null,
     },
   });
 });
 
-communitiesRoute.get("/nearby", async (c) => {
-  const query = c.req.query();
-  const parsed = nearbyQuerySchema.safeParse(query);
+communitiesRoute.post('/:communityId/join', async (c) => {
+  const payload = await c.req.json().catch(() => null);
+  const parsedRequest = membershipRequestSchema.safeParse(payload);
+  if (!parsedRequest.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+  const identity = await requireTelegramIdentity(c, parsedRequest.data.telegramId);
+  if (!identity.ok) return c.json({ ok: false, error: identity.error }, identity.status);
+  const id = Number(c.req.param('communityId'));
+  const db = database(c.env.DB);
+  const existing = await db.prepare('SELECT id FROM communities WHERE id = ?').bind(id).first();
+  if (!existing) return c.json({ ok: false, error: 'community_not_found' }, 404);
+  const result = await db
+    .prepare(
+      `INSERT INTO user_community_memberships(telegram_id, community_id, status)
+    SELECT ?, ?, 'requested' WHERE NOT EXISTS(SELECT 1 FROM user_community_memberships WHERE telegram_id = ? AND status = 'member' AND community_id != ?)
+    ON CONFLICT(telegram_id, community_id) DO NOTHING`,
+    )
+    .bind(identity.telegramId, id, identity.telegramId, id)
+    .run();
+  const member = await db
+    .prepare(
+      'SELECT status FROM user_community_memberships WHERE telegram_id = ? AND community_id = ?',
+    )
+    .bind(identity.telegramId, id)
+    .first();
+  if (!member) return c.json({ ok: false, error: 'already_member_elsewhere' }, 409);
+  return c.json({ ok: true });
+});
 
-  if (!parsed.success) {
-    return c.json({ ok: false, error: "invalid_query" }, 400);
-  }
-
-  const identity = await resolveOptionalTelegramIdentity(
-    c,
-    parsed.data.telegramId,
+communitiesRoute.get('/:communityId/meeting', async (c) => {
+  const identity = await requireTelegramIdentity(c, Number(c.req.query('telegramId')));
+  if (!identity.ok) return c.json({ ok: false, error: identity.error }, identity.status);
+  const id = Number(c.req.param('communityId'));
+  const db = database(c.env.DB);
+  const member = await db
+    .prepare(
+      `SELECT 1 FROM communities c WHERE c.id = ? AND (c.owner_telegram_id = ? OR EXISTS(
+    SELECT 1 FROM user_community_memberships m WHERE m.community_id = c.id AND m.telegram_id = ? AND m.status = 'member'))`,
+    )
+    .bind(id, identity.telegramId, identity.telegramId)
+    .first();
+  if (!member) return c.json({ ok: false, error: 'forbidden' }, 403);
+  const details = await readPrivate<{ link?: string; slots?: unknown[] }>(
+    c.env,
+    `community:${id}:link`,
   );
-  if (!identity.ok) {
-    return c.json({ ok: false, error: identity.error }, identity.status);
-  }
-
-  const effectiveTelegramId = identity.telegramId;
-
-  if (hasD1(c.env.DB)) {
-    try {
-      const communities = await getNearestCommunitiesFromDb(
-        c.env.DB,
-        parsed.data.latitude,
-        parsed.data.longitude,
-        effectiveTelegramId,
-      );
-
-      if (communities.length > 0) {
-        return c.json({ ok: true, communities });
-      }
-    } catch (error) {
-      console.warn(
-        "communities nearby db lookup failed, falling back to seed",
-        {
-          error,
-        },
-      );
-    }
-  }
-
-  const nearest = getNearestSeedLocation(
-    parsed.data.latitude,
-    parsed.data.longitude,
-  );
-  const communities =
-    typeof effectiveTelegramId === "number"
-      ? nearest.communities.map((community) => ({
-          ...community,
-          memberState: "not_member" as const,
-          canManage: false,
-          canCreateQahal: true,
-        }))
-      : nearest.communities;
-
   return c.json({
     ok: true,
-    communities,
+    link: details?.link ?? null,
+    slots:
+      (await readPrivate<{ slots: unknown[] }>(c.env, `community:${id}:meetings`))?.slots ?? [],
   });
 });
 
-communitiesRoute.get("/people", async (c) => {
-  const city = c.req.query("city");
-  const latitude = c.req.query("latitude");
-  const longitude = c.req.query("longitude");
-
-  if (hasD1(c.env.DB)) {
-    try {
-      const location = await getDbLocation(c.env.DB, city, latitude, longitude);
-      if (location) {
-        const people = await getDbPeopleByCity(c.env.DB, location.city);
-        return c.json({
-          ok: true,
-          location,
-          people,
-        });
-      }
-    } catch (error) {
-      console.warn(
-        "communities people db lookup failed, falling back to seed",
-        {
-          error,
-        },
-      );
-    }
-  }
-
-  const byCity = city ? getSeedLocationByCity(city) : undefined;
-
-  if (byCity) {
-    return c.json({
-      ok: true,
-      location: { city: byCity.city, country: byCity.country },
-      people: byCity.people,
-    });
-  }
-
-  if (latitude && longitude) {
-    const lat = Number(latitude);
-    const lng = Number(longitude);
-
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      const nearest = getNearestSeedLocation(lat, lng);
-      return c.json({
-        ok: true,
-        location: { city: nearest.city, country: nearest.country },
-        people: nearest.people,
-      });
-    }
-  }
-
-  return c.json({ ok: false, error: "city_or_coordinates_required" }, 400);
-});
-
-communitiesRoute.get("/leaders", async (c) => {
-  const city = c.req.query("city");
-  if (!city) {
-    return c.json({ ok: false, error: "city_required" }, 400);
-  }
-
-  if (hasD1(c.env.DB)) {
-    try {
-      type DbLeaderRow = {
-        communityId: number;
-        communityName: string;
-        personId: number;
-        leaderName: string;
-      };
-
-      const leaders = await c.env.DB.prepare(
-        `SELECT c.id as communityId,
-                  c.name as communityName,
-                  cp.id as personId,
-                  cp.name as leaderName
-           FROM community_people cp
-           JOIN communities c ON c.id = cp.community_id
-           JOIN community_person_badges cpb ON cpb.person_id = cp.id
-           WHERE lower(cp.city) = lower(?1)
-             AND cpb.kind = 'messenger'
-           ORDER BY c.name ASC`,
-      )
-        .bind(city)
-        .all<DbLeaderRow>();
-
-      if ((leaders.results ?? []).length > 0) {
-        return c.json({
-          ok: true,
-          city,
-          leaders: leaders.results,
-        });
-      }
-    } catch (error) {
-      console.warn(
-        "communities leaders db lookup failed, falling back to seed",
-        {
-          error,
-        },
-      );
-    }
-  }
-
-  return c.json({
-    ok: true,
-    city,
-    leaders: getSeedLeadersByCity(city),
-  });
+communitiesRoute.put('/:communityId/meeting', async (c) => {
+  const payload = await c.req.json().catch(() => null);
+  const parsedRequest = membershipRequestSchema.safeParse(payload);
+  if (!parsedRequest.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+  const identity = await requireTelegramIdentity(c, parsedRequest.data.telegramId);
+  if (!identity.ok) return c.json({ ok: false, error: identity.error }, identity.status);
+  const id = Number(c.req.param('communityId'));
+  if (!(await assertLeaderOwnership(database(c.env.DB), id, identity.telegramId)))
+    return c.json({ ok: false, error: 'forbidden' }, 403);
+  if (!meetingLinkSchema.safeParse(payload).success)
+    return c.json({ ok: false, error: 'invalid_link' }, 400);
+  await (
+    await privateStatement(c.env, `community:${id}:link`, { link: payload.link || null })
+  ).run();
+  return c.json({ ok: true });
 });

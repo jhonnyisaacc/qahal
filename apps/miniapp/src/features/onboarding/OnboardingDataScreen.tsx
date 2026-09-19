@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import { CitySearch } from "./CitySearch";
-import { useI18n } from "../../app/i18n";
+import { redesignCopy } from '../../app/i18n/redesign';
+import { useEffect, useRef, useState } from 'react';
+import { CitySearch } from './CitySearch';
+import { useI18n } from '../../app/i18n';
 
 interface OnboardingDataScreenProps {
   telegramId: number;
   initialFirstName: string;
   initialCity: string;
-  initialLanguageCode: "en" | "es" | "he";
+  initialLanguageCode: 'en' | 'es' | 'he';
   busy: boolean;
   onSubmit: (
     firstName: string,
     city: string,
-    languageCode: "en" | "es" | "he",
+    languageCode: 'en' | 'es' | 'he',
     cityCoordinates?: { latitude: number; longitude: number },
   ) => Promise<void>;
 }
@@ -25,20 +26,21 @@ export const OnboardingDataScreen = ({
   onSubmit,
 }: OnboardingDataScreenProps) => {
   const { t } = useI18n();
+  const [saveError, setSaveError] = useState(false);
   const [firstName, setFirstName] = useState(initialFirstName);
   const [city, setCity] = useState(initialCity);
   const [cityCoordinates, setCityCoordinates] = useState<
     { latitude: number; longitude: number } | undefined
   >(undefined);
-  const [step, setStep] = useState<"name" | "city">("name");
+  const [step, setStep] = useState<'name' | 'city'>('name');
   const [isNameInputFocused, setIsNameInputFocused] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
-  const canContinue = step === "name" ? firstName.trim().length > 0 : true;
+  const canContinue = step === 'name' ? firstName.trim().length > 0 : true;
 
   useEffect(() => {
-    if (step !== "name") {
+    if (step !== 'name') {
       setKeyboardInset(0);
       return;
     }
@@ -54,26 +56,23 @@ export const OnboardingDataScreen = ({
         return;
       }
 
-      const inset = Math.max(
-        0,
-        window.innerHeight - viewport.height - viewport.offsetTop,
-      );
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
       // Ignore tiny viewport changes caused by browser chrome animations.
       setKeyboardInset(inset > 80 ? inset : 0);
     };
 
     updateKeyboardInset();
-    viewport.addEventListener("resize", updateKeyboardInset);
-    viewport.addEventListener("scroll", updateKeyboardInset);
+    viewport.addEventListener('resize', updateKeyboardInset);
+    viewport.addEventListener('scroll', updateKeyboardInset);
 
     return () => {
-      viewport.removeEventListener("resize", updateKeyboardInset);
-      viewport.removeEventListener("scroll", updateKeyboardInset);
+      viewport.removeEventListener('resize', updateKeyboardInset);
+      viewport.removeEventListener('scroll', updateKeyboardInset);
     };
   }, [isNameInputFocused, step]);
 
   const dismissNameKeyboard = (target: EventTarget | null) => {
-    if (step !== "name" || !isNameInputFocused) {
+    if (step !== 'name' || !isNameInputFocused) {
       return;
     }
 
@@ -95,17 +94,16 @@ export const OnboardingDataScreen = ({
       className="relative flex min-h-[100dvh] flex-col overflow-hidden"
       onPointerDownCapture={(event) => dismissNameKeyboard(event.target)}
     >
-      {/* Paper: same dark background as questions */}
+      {saveError && (
+        <p className="relative z-20" role="alert">
+          {redesignCopy(initialLanguageCode).error}
+        </p>
+      )}
+      {/* Solid warm background (pure, no radial overlays) */}
       <div
         className="absolute inset-0"
         style={{
-          background: "var(--theme-bg-main)",
-        }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "var(--theme-bg-overlay)",
+          background: 'var(--theme-bg-main)',
         }}
       />
 
@@ -113,8 +111,7 @@ export const OnboardingDataScreen = ({
       <div
         className="relative z-10 flex flex-1 flex-col justify-between px-[28px] pt-[56px]"
         style={{
-          paddingBottom:
-            step === "name" ? `${Math.max(20, 36 + keyboardInset)}px` : "36px",
+          paddingBottom: step === 'name' ? `${Math.max(20, 36 + keyboardInset)}px` : '36px',
         }}
       >
         <div className="h-[14px]" />
@@ -126,24 +123,21 @@ export const OnboardingDataScreen = ({
             className="qahal-display w-full text-center"
             style={{
               fontSize: 34,
-              lineHeight: "120%",
+              lineHeight: '120%',
               fontWeight: 600,
-              color: "#E8DDD0",
+              color: 'var(--theme-onboarding-title)',
             }}
           >
-            {step === "name"
-              ? t.onboardingData.nameTitle
-              : t.onboardingData.cityTitle}
+            {step === 'name' ? t.onboardingData.nameTitle : t.onboardingData.cityTitle}
           </h2>
 
-          {step === "city" && (
+          {step === 'city' && (
             <p
               className="text-center"
               style={{
                 fontSize: 14,
-                lineHeight: "155%",
-                color: "#E8DDD0",
-                opacity: 0.6,
+                lineHeight: '155%',
+                color: 'var(--theme-text-secondary)',
                 marginTop: -16,
               }}
             >
@@ -152,7 +146,7 @@ export const OnboardingDataScreen = ({
           )}
 
           {/* Input — Paper 3TX-0 */}
-          {step === "name" ? (
+          {step === 'name' ? (
             <input
               ref={nameInputRef}
               value={firstName}
@@ -162,15 +156,16 @@ export const OnboardingDataScreen = ({
               placeholder={t.onboardingData.namePlaceholder}
               autoFocus
               style={{
-                width: "100%",
+                width: '100%',
                 height: 52,
                 borderRadius: 14,
-                padding: "0 16px",
-                background: "#E8DDD00F",
-                border: "1.5px solid #C9A46F33",
+                padding: '0 16px',
+                background: 'var(--theme-input-bg)',
+                border: '1px solid var(--theme-input-border)',
+                boxShadow: 'var(--theme-card-shadow)',
                 fontSize: 15,
-                color: "#E8DDD0",
-                outline: "none",
+                color: 'var(--theme-input-text)',
+                outline: 'none',
               }}
             />
           ) : (
@@ -195,46 +190,46 @@ export const OnboardingDataScreen = ({
             type="button"
             disabled={!canContinue || busy}
             onClick={() => {
-              if (step === "name") {
+              if (step === 'name') {
                 nameInputRef.current?.blur();
                 setIsNameInputFocused(false);
-                setStep("city");
+                setStep('city');
               } else {
-                onSubmit(
+                setSaveError(false);
+                void onSubmit(
                   firstName.trim(),
                   city.trim(),
                   initialLanguageCode,
                   cityCoordinates,
-                );
+                ).catch(() => setSaveError(true));
               }
             }}
             className="flex shrink-0 items-center justify-center disabled:opacity-40"
             style={{
               height: 52,
               borderRadius: 14,
-              background: "var(--theme-accent)",
-              border: "1.5px solid #C9A46F",
-              boxShadow: "#1E5C5A40 0px 8px 24px",
+              background: 'var(--theme-button-primary-bg)',
+              border: '1px solid var(--theme-button-primary-border)',
+              boxShadow: 'var(--theme-button-primary-shadow)',
               fontSize: 16,
               fontWeight: 600,
-              letterSpacing: "0.02em",
-              color: "#E8DDD0",
+              letterSpacing: '0.02em',
+              color: 'var(--theme-button-primary-text)',
             }}
           >
             {busy ? t.onboardingData.saving : t.common.continue}
           </button>
 
-          {step === "city" && (
+          {step === 'city' && (
             <button
               type="button"
-              onClick={() => setStep("name")}
+              onClick={() => setStep('name')}
               className="flex shrink-0 items-center justify-center"
               style={{
                 height: 44,
                 fontSize: 14,
                 fontWeight: 500,
-                color: "#E8DDD0",
-                opacity: 0.5,
+                color: 'var(--theme-text-secondary)',
               }}
             >
               {t.common.back}
@@ -246,17 +241,19 @@ export const OnboardingDataScreen = ({
             <span
               className="shrink-0 rounded-[99px]"
               style={{
-                width: step === "name" ? 24 : 12,
+                width: step === 'name' ? 24 : 12,
                 height: 3,
-                background: step === "name" ? "#C9A46F" : "#E8DDD026",
+                background:
+                  step === 'name' ? 'var(--brand-purple)' : 'var(--theme-onboarding-dot-inactive)',
               }}
             />
             <span
               className="shrink-0 rounded-[99px]"
               style={{
-                width: step === "city" ? 24 : 12,
+                width: step === 'city' ? 24 : 12,
                 height: 3,
-                background: step === "city" ? "#C9A46F" : "#E8DDD026",
+                background:
+                  step === 'city' ? 'var(--brand-purple)' : 'var(--theme-onboarding-dot-inactive)',
               }}
             />
           </div>

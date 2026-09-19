@@ -1,5 +1,8 @@
+import type { EmunahState } from "@qahal/shared";
+
 export type RootScreen =
   | "onboarding-carousel"
+  | "onboarding-state"
   | "onboarding-questions"
   | "onboarding-data"
   | "map"
@@ -49,6 +52,8 @@ export interface EffectiveProfileSnapshot {
   canCreateQahal: boolean;
   canManageQahal: boolean;
   managedCommunityId: number | null;
+  emunahState?: EmunahState;
+  emunahLevelApproved: boolean;
 }
 
 export const BADGE_DEFINITIONS: Record<string, BadgeDefinition> = {
@@ -154,6 +159,7 @@ export interface OnboardingAnswers {
   cityLatitude?: number;
   cityLongitude?: number;
   languageCode: "en" | "es" | "he";
+  emunahState?: EmunahState;
 }
 
 export interface AppFlowState {

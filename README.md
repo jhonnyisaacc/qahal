@@ -67,6 +67,6 @@ This keeps UI, state, and feature code unified while only runtime-specific behav
 
 To test mobile behavior in a desktop browser, open dev tools device emulation and visit http://localhost:3006.
 
-## Paper-to-Code
+## Design system and Pen workflow
 
-Design integration workflow is documented in docs/product/paper-to-code.md.
+[DESIGN.md](DESIGN.md) is the canonical system, audit and screen inventory (v2.1). Live draft screens live in [design/qahal.pen](design/qahal.pen). The Pen workflow is [docs/product/paper-to-code.md](docs/product/paper-to-code.md). Phase 2 drafted phones and components; nothing in Pen is approved or implemented in the miniapp yet. Dark canvas is Black. Actions in the spec are Purple 800 liquid-glass pills. Do not revive map screens or entity photos.

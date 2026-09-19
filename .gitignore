@@ -17,3 +17,7 @@ coverage/
 
 # OS
 .DS_Store
+
+# Browser test artifacts
+test-results/
+playwright-report/
