@@ -1,7 +1,15 @@
-import { Hono } from "hono";
-import { onboardingSubmitSchema } from "@qahal/shared";
-import type { Bindings } from "../types/env";
-import { requireTelegramIdentity } from "../lib/telegramIdentity";
+import { database } from '../lib/db';
+import { readProfile, profileStatements, patchProfile } from '../services/privateData';
+import { Hono } from 'hono';
+import { demoScenarioApplySchema, onboardingSubmitSchema } from '@qahal/shared';
+import type { Bindings } from '../types/env';
+import { requireTelegramIdentity } from '../lib/telegramIdentity';
+import { isProductionRequest } from '../lib/runtimeEnv';
+import {
+  applyDemoScenario,
+  clearDemoUserState,
+  getDemoScenarioDefinitions,
+} from '../services/demoScenarios';
 
 type D1Like = {
   prepare: (query: string) => {
@@ -14,113 +22,52 @@ type D1Like = {
 };
 
 const hasD1 = (db: unknown): db is D1Like => {
-  return typeof db === "object" && db !== null && "prepare" in db;
+  return typeof db === 'object' && db !== null && 'prepare' in db;
 };
 
-const EMUNAH_BADGE = { key: "emunah", label: "Emunah" };
+const EMUNAH_BADGE = { key: 'emunah', label: 'Emunah' };
 
-const shouldGrantEmunahBadge = (
-  answers: Record<string, string> | undefined,
-): boolean => {
+const normalizeEmunahState = (
+  value: unknown,
+): 'leader' | 'experienced' | 'starting' | undefined => {
+  return value === 'leader' || value === 'experienced' || value === 'starting' ? value : undefined;
+};
+
+const normalizeApprovalFlag = (value: unknown): boolean => {
+  return value === true || value === 1 || value === '1';
+};
+
+const shouldGrantEmunahBadge = (answers: Record<string, string> | undefined): boolean => {
   if (!answers) {
     return false;
   }
 
-  const doctrinalSteps = ["1", "2", "3", "4", "5", "6", "7"];
+  const doctrinalSteps = ['1', '2', '3', '4', '5', '6', '7'];
   return doctrinalSteps.every((stepKey) => {
-    return String(answers[stepKey] ?? "").trim().toLowerCase() === "yes";
+    return (
+      String(answers[stepKey] ?? '')
+        .trim()
+        .toLowerCase() === 'yes'
+    );
   });
-};
-
-const shouldGrantEmunahBadgeFromStoredAnswers = async (
-  db: D1Like,
-  telegramId: number,
-): Promise<boolean | null> => {
-  try {
-    type AnswerRow = { questionKey: string; answerValue: string };
-    const result = await db
-      .prepare(
-        `SELECT question_key as questionKey,
-                answer_value as answerValue
-         FROM user_onboarding_answers
-         WHERE telegram_id = ?1
-           AND question_key IN ('1', '2', '3', '4', '5', '6', '7')`,
-      )
-      .bind(telegramId)
-      .all<AnswerRow>();
-
-    const answersByStep = new Map<string, string>();
-    for (const row of result.results ?? []) {
-      answersByStep.set(row.questionKey, row.answerValue);
-    }
-
-    const doctrinalSteps = ["1", "2", "3", "4", "5", "6", "7"];
-    return doctrinalSteps.every((stepKey) => {
-      return (
-        String(answersByStep.get(stepKey) ?? "").trim().toLowerCase() ===
-        "yes"
-      );
-    });
-  } catch {
-    return null;
-  }
 };
 
 const selectUserBase = async (
   db: D1Like,
   telegramId: number,
 ): Promise<Record<string, unknown> | null> => {
-  try {
-    return await db
-      .prepare(
-        `SELECT telegram_id as telegramId,
-              username,
-              first_name as firstName,
-              last_name as lastName,
-              photo_url as photoUrl,
-              language_code as languageCode,
-              city,
-              birth_date as birthDate,
-              created_at as createdAt,
-              onboarding_completed as onboardingCompleted
-       FROM users
-       WHERE telegram_id = ?1`,
-      )
-      .bind(telegramId)
-      .first<Record<string, unknown>>();
-  } catch {
-    // Backward compatibility for D1 instances without city/onboarding_completed columns.
-    const legacyUser = await db
-      .prepare(
-        `SELECT telegram_id as telegramId,
-              username,
-              first_name as firstName,
-              last_name as lastName,
-              photo_url as photoUrl,
-              language_code as languageCode
-       FROM users
-       WHERE telegram_id = ?1`,
-      )
-      .bind(telegramId)
-      .first<Record<string, unknown>>();
-
-    if (!legacyUser) {
-      return null;
-    }
-
-    return {
-      ...legacyUser,
-      city: null,
-      birthDate: null,
-      onboardingCompleted: false,
-    };
-  }
+  return db
+    .prepare(
+      `SELECT telegram_id as telegramId, language_code as languageCode, city,
+    emunah_state as emunahState, emunah_level_approved as emunahLevelApproved,
+    created_at as createdAt, onboarding_completed as onboardingCompleted
+    FROM users WHERE telegram_id = ?`,
+    )
+    .bind(telegramId)
+    .first<Record<string, unknown>>();
 };
 
-const selectUserBadges = async (
-  db: D1Like,
-  telegramId: number,
-): Promise<string[]> => {
+const selectUserBadges = async (db: D1Like, telegramId: number): Promise<string[]> => {
   try {
     type BadgeRow = { badgeLabel: string };
     const result = await db
@@ -139,10 +86,7 @@ const selectUserBadges = async (
   }
 };
 
-const selectUserQahalName = async (
-  db: D1Like,
-  telegramId: number,
-): Promise<string | null> => {
+const selectUserQahalName = async (db: D1Like, telegramId: number): Promise<string | null> => {
   try {
     type QahalRow = { qahalName: string };
     const memberCommunity = await db
@@ -203,7 +147,7 @@ const selectUserCommunityCapabilities = async (
     return {
       managedCommunityId: null,
       canManageQahal: false,
-      canCreateQahal: true,
+      canCreateQahal: false,
     };
   }
 
@@ -261,37 +205,31 @@ const selectUser = async (
     return null;
   }
 
-  const shouldGrantFromStored = await shouldGrantEmunahBadgeFromStoredAnswers(
-    db,
-    telegramId,
-  );
-  if (typeof shouldGrantFromStored === "boolean") {
-    await syncEmunahBadge(db, telegramId, shouldGrantFromStored);
-  }
-
   const [baseBadges, qahalName, latestLocation, capabilities] = await Promise.all([
     selectUserBadges(db, telegramId),
     selectUserQahalName(db, telegramId),
     selectLatestLocation(db, telegramId),
     selectUserCommunityCapabilities(db, telegramId),
   ]);
+  const emunahState = normalizeEmunahState(base.emunahState);
+  const emunahLevelApproved =
+    emunahState === 'leader' ? normalizeApprovalFlag(base.emunahLevelApproved) : true;
 
   const badgesSet = new Set<string>(baseBadges);
 
   if (qahalName) {
-    badgesSet.add("Kehilah");
+    badgesSet.add('Kehilah');
   }
 
   const createdAtValue = base.createdAt;
-  if (typeof createdAtValue === "string" && createdAtValue.length > 0) {
+  if (typeof createdAtValue === 'string' && createdAtValue.length > 0) {
     const createdAt = new Date(createdAtValue);
     if (!Number.isNaN(createdAt.getTime())) {
       const now = new Date();
       let years = now.getFullYear() - createdAt.getFullYear();
       const anniversaryPending =
         now.getMonth() < createdAt.getMonth() ||
-        (now.getMonth() === createdAt.getMonth() &&
-          now.getDate() < createdAt.getDate());
+        (now.getMonth() === createdAt.getMonth() && now.getDate() < createdAt.getDate());
       if (anniversaryPending) {
         years -= 1;
       }
@@ -301,43 +239,19 @@ const selectUser = async (
 
   return {
     ...base,
+    emunahState,
+    emunahLevelApproved,
     badges: Array.from(badgesSet),
     qahalName,
     managedCommunityId: capabilities.managedCommunityId,
     canManageQahal: capabilities.canManageQahal,
-    canCreateQahal: capabilities.canCreateQahal,
+    canCreateQahal:
+      capabilities.canCreateQahal && !(emunahState === 'leader' && !emunahLevelApproved),
     ...latestLocation,
   };
 };
 
-const upsertOnboardingAnswers = async (
-  db: D1Like,
-  telegramId: number,
-  answers: Record<string, string> | undefined,
-) => {
-  if (!answers || Object.keys(answers).length === 0) {
-    return;
-  }
-
-  for (const [questionKey, answerValue] of Object.entries(answers)) {
-    await db
-      .prepare(
-        `INSERT INTO user_onboarding_answers (telegram_id, question_key, answer_value)
-         VALUES (?1, ?2, ?3)
-         ON CONFLICT(telegram_id, question_key) DO UPDATE SET
-           answer_value=excluded.answer_value,
-           updated_at=CURRENT_TIMESTAMP`,
-      )
-      .bind(telegramId, questionKey, answerValue)
-      .run();
-  }
-};
-
-const syncEmunahBadge = async (
-  db: D1Like,
-  telegramId: number,
-  grant: boolean,
-) => {
+const syncEmunahBadge = async (db: D1Like, telegramId: number, grant: boolean) => {
   if (grant) {
     await db
       .prepare(
@@ -363,100 +277,106 @@ const syncEmunahBadge = async (
 
 export const usersRoute = new Hono<{ Bindings: Bindings }>();
 
-usersRoute.post("/onboarding", async (c) => {
+usersRoute.get('/demo-scenarios', async (c) => {
+  if (isProductionRequest(c)) {
+    return c.json({ ok: false, error: 'dev_only' }, 403);
+  }
+
+  return c.json({
+    ok: true,
+    scenarios: getDemoScenarioDefinitions(),
+  });
+});
+
+usersRoute.post('/demo-scenarios/apply', async (c) => {
+  if (isProductionRequest(c)) {
+    return c.json({ ok: false, error: 'dev_only' }, 403);
+  }
+
   const payload = await c.req.json().catch(() => null);
-  const parsed = onboardingSubmitSchema.safeParse(payload);
-
+  const parsed = demoScenarioApplySchema.safeParse(payload);
   if (!parsed.success) {
-    return c.json({ ok: false, error: "invalid_payload" }, 400);
+    return c.json({ ok: false, error: 'invalid_payload' }, 400);
   }
 
-  const { telegramId, firstName, city, languageCode, answers } = parsed.data;
-  const identity = await requireTelegramIdentity(c, telegramId);
+  const identity = await requireTelegramIdentity(c, parsed.data.telegramId);
   if (!identity.ok) {
     return c.json({ ok: false, error: identity.error }, identity.status);
   }
 
-  const effectiveTelegramId = identity.telegramId;
-  const grantEmunah = shouldGrantEmunahBadge(answers);
-  const normalizedCity =
-    typeof city === "string" && city.trim().length > 0 ? city.trim() : null;
-
   if (!hasD1(c.env.DB)) {
-    return c.json({
-      ok: true,
-      user: {
-        telegramId: effectiveTelegramId,
-        firstName,
-        city: normalizedCity ?? undefined,
-        languageCode,
-        onboardingCompleted: true,
-        badges: grantEmunah ? [EMUNAH_BADGE.label] : [],
-      },
+    return c.json({ ok: false, error: 'database_unavailable' }, 503);
+  }
+
+  try {
+    const scenario = await applyDemoScenario(c.env.DB, identity.telegramId, parsed.data.scenarioId);
+
+    return c.json({ ok: true, scenario });
+  } catch (error) {
+    console.error('demo scenario apply failed', {
+      error,
+      telegramId: identity.telegramId,
+      scenarioId: parsed.data.scenarioId,
     });
+    return c.json({ ok: false, error: 'scenario_apply_failed' }, 500);
   }
+});
 
-  try {
-    await c.env.DB.prepare(
-      `INSERT INTO users (telegram_id, first_name, city, language_code, onboarding_completed)
-       VALUES (?1, ?2, ?3, ?4, 1)
-       ON CONFLICT(telegram_id) DO UPDATE SET
-         first_name=excluded.first_name,
-         city=excluded.city,
-         language_code=excluded.language_code,
-         onboarding_completed=1,
-         updated_at=CURRENT_TIMESTAMP`,
-    )
-      .bind(effectiveTelegramId, firstName, normalizedCity, languageCode)
-      .run();
-
-    await upsertOnboardingAnswers(c.env.DB, effectiveTelegramId, answers);
-    await syncEmunahBadge(c.env.DB, effectiveTelegramId, grantEmunah);
-  } catch {
-    try {
-      // Backward compatibility for D1 instances without city/onboarding_completed columns.
-      await c.env.DB.prepare(
-        `INSERT INTO users (telegram_id, first_name, language_code)
-         VALUES (?1, ?2, ?3)
-         ON CONFLICT(telegram_id) DO UPDATE SET
-           first_name=excluded.first_name,
-           language_code=excluded.language_code,
-           updated_at=CURRENT_TIMESTAMP`,
+usersRoute.post('/onboarding', async (c) => {
+  const parsed = onboardingSubmitSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+  const { telegramId, firstName, city, languageCode, emunahState, answers } = parsed.data;
+  const identity = await requireTelegramIdentity(c, telegramId);
+  if (!identity.ok) return c.json({ ok: false, error: identity.error }, identity.status);
+  const db = database(c.env.DB);
+  const profile = await readProfile(c.env, telegramId);
+  // The identity helper has verified this signed Telegram payload and account match.
+  const initData =
+    c.req.header('x-telegram-init-data') ||
+    c.req.header('authorization')?.replace(/^tma\s+/i, '') ||
+    '';
+  const rawUser = new URLSearchParams(initData).get('user');
+  const telegramUser = rawUser ? JSON.parse(rawUser) : {};
+  const privateWrites = await profileStatements(c.env, telegramId, {
+    ...profile,
+    firstName,
+    answers: answers ?? {},
+    username: telegramUser.username ?? profile.username,
+  });
+  await db.batch([
+    db
+      .prepare(
+        `INSERT INTO users(telegram_id, city, language_code, emunah_state, emunah_level_approved, onboarding_completed)
+    VALUES (?, ?, ?, ?, ?, 1) ON CONFLICT(telegram_id) DO UPDATE SET city = excluded.city,
+    language_code = excluded.language_code, emunah_state = excluded.emunah_state,
+    emunah_level_approved = CASE WHEN excluded.emunah_state = 'leader' THEN
+      CASE WHEN users.emunah_state = 'leader' THEN users.emunah_level_approved ELSE 0 END ELSE 1 END,
+    onboarding_completed = 1, updated_at = CURRENT_TIMESTAMP`,
       )
-        .bind(effectiveTelegramId, firstName, languageCode)
-        .run();
-
-      await upsertOnboardingAnswers(c.env.DB, effectiveTelegramId, answers);
-      await syncEmunahBadge(c.env.DB, effectiveTelegramId, grantEmunah);
-    } catch (error) {
-      console.error("onboarding save failed", {
-        error,
-        telegramId: effectiveTelegramId,
-      });
-      return c.json({
-        ok: true,
-        user: {
-          telegramId: effectiveTelegramId,
-          firstName,
-          city: normalizedCity ?? undefined,
-          languageCode,
-          onboardingCompleted: true,
-          badges: grantEmunah ? [EMUNAH_BADGE.label] : [],
-        },
-        persisted: false,
-      });
-    }
-  }
-
-  const user = await selectUser(c.env.DB, effectiveTelegramId);
-
-  return c.json({ ok: true, user });
+      .bind(
+        telegramId,
+        city ?? null,
+        languageCode,
+        emunahState ?? null,
+        emunahState === 'leader' ? 0 : 1,
+      ),
+    ...privateWrites,
+  ]);
+  await syncEmunahBadge(db, telegramId, shouldGrantEmunahBadge(answers));
+  return c.json({
+    ok: true,
+    user: {
+      ...(await selectUser(db, telegramId)),
+      ...(await readProfile(c.env, telegramId)),
+      answers: undefined,
+    },
+  });
 });
 
-usersRoute.get("/:telegramId", async (c) => {
-  const requestedTelegramId = Number(c.req.param("telegramId"));
+usersRoute.get('/:telegramId', async (c) => {
+  const requestedTelegramId = Number(c.req.param('telegramId'));
   if (!Number.isFinite(requestedTelegramId)) {
-    return c.json({ ok: false, error: "invalid_telegram_id" }, 400);
+    return c.json({ ok: false, error: 'invalid_telegram_id' }, 400);
   }
 
   const identity = await requireTelegramIdentity(c, requestedTelegramId);
@@ -472,71 +392,46 @@ usersRoute.get("/:telegramId", async (c) => {
 
   const user = await selectUser(c.env.DB, effectiveTelegramId);
 
-  return c.json({ ok: true, user });
+  return c.json({
+    ok: true,
+    user: user
+      ? { ...user, ...(await readProfile(c.env, effectiveTelegramId)), answers: undefined }
+      : null,
+  });
 });
 
-usersRoute.put("/:telegramId/profile", async (c) => {
-  const requestedTelegramId = Number(c.req.param("telegramId"));
-  if (!Number.isFinite(requestedTelegramId)) {
-    return c.json({ ok: false, error: "invalid_telegram_id" }, 400);
+usersRoute.put('/:telegramId/profile', async (c) => {
+  const id = Number(c.req.param('telegramId'));
+  const identity = await requireTelegramIdentity(c, id);
+  if (!identity.ok) return c.json({ ok: false, error: identity.error }, identity.status);
+  const payload = await c.req.json().catch(() => null);
+  if (
+    !payload ||
+    (payload.firstName !== undefined &&
+      (typeof payload.firstName !== 'string' ||
+        !payload.firstName.trim() ||
+        payload.firstName.length > 80)) ||
+    (payload.birthDate !== undefined &&
+      payload.birthDate !== null &&
+      (typeof payload.birthDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(payload.birthDate)))
+  ) {
+    return c.json({ ok: false, error: 'invalid_payload' }, 400);
   }
-
-  const identity = await requireTelegramIdentity(c, requestedTelegramId);
-  if (!identity.ok) {
-    return c.json({ ok: false, error: identity.error }, identity.status);
-  }
-
-  const effectiveTelegramId = identity.telegramId;
-
-  const payload = (await c.req.json().catch(() => ({}))) as {
-    firstName?: string;
-    birthDate?: string | null;
-  };
-
-  if (!hasD1(c.env.DB)) {
-    return c.json({ ok: true, user: null });
-  }
-
-  const safeFirstName =
-    typeof payload.firstName === "string" && payload.firstName.trim().length > 0
-      ? payload.firstName.trim().slice(0, 80)
-      : null;
-  const safeBirthDate =
-    typeof payload.birthDate === "string" && payload.birthDate.trim().length > 0
-      ? payload.birthDate.trim()
-      : null;
-
-  try {
-    await c.env.DB.prepare(
-      `INSERT INTO users (telegram_id, first_name, birth_date)
-         VALUES (?1, ?2, ?3)
-         ON CONFLICT(telegram_id) DO UPDATE SET
-           first_name=COALESCE(?2, users.first_name),
-           birth_date=COALESCE(?3, users.birth_date),
-           updated_at=CURRENT_TIMESTAMP`,
-    )
-      .bind(effectiveTelegramId, safeFirstName, safeBirthDate)
-      .run();
-  } catch {
-    await c.env.DB.prepare(
-      `INSERT INTO users (telegram_id, first_name)
-         VALUES (?1, ?2)
-         ON CONFLICT(telegram_id) DO UPDATE SET
-           first_name=COALESCE(?2, users.first_name),
-           updated_at=CURRENT_TIMESTAMP`,
-    )
-      .bind(effectiveTelegramId, safeFirstName)
-      .run();
-  }
-
-  const user = await selectUser(c.env.DB, effectiveTelegramId);
-  return c.json({ ok: true, user });
+  const changes: { firstName?: string; birthDate?: string | null } = {};
+  if (payload.firstName !== undefined) changes.firstName = payload.firstName.trim();
+  if (payload.birthDate !== undefined) changes.birthDate = payload.birthDate;
+  const db = database(c.env.DB);
+  const profile = await patchProfile(c.env, id, changes);
+  return c.json({
+    ok: true,
+    user: { ...(await selectUser(db, id)), ...profile, answers: undefined },
+  });
 });
 
-usersRoute.delete("/:telegramId/local-reset", async (c) => {
-  const requestedTelegramId = Number(c.req.param("telegramId"));
+usersRoute.delete('/:telegramId/local-reset', async (c) => {
+  const requestedTelegramId = Number(c.req.param('telegramId'));
   if (!Number.isFinite(requestedTelegramId)) {
-    return c.json({ ok: false, error: "invalid_telegram_id" }, 400);
+    return c.json({ ok: false, error: 'invalid_telegram_id' }, 400);
   }
 
   const identity = await requireTelegramIdentity(c, requestedTelegramId);
@@ -548,32 +443,20 @@ usersRoute.delete("/:telegramId/local-reset", async (c) => {
 
   const requestHost = new URL(c.req.url).hostname.toLowerCase();
   const isLocalHost =
-    requestHost === "localhost" ||
-    requestHost === "127.0.0.1" ||
-    requestHost === "::1";
+    requestHost === 'localhost' || requestHost === '127.0.0.1' || requestHost === '::1';
 
   if (!isLocalHost) {
-    return c.json({ ok: false, error: "local_only" }, 403);
+    return c.json({ ok: false, error: 'local_only' }, 403);
   }
 
   if (!hasD1(c.env.DB)) {
     return c.json({ ok: true, reset: false });
   }
 
-  const deleteStatements = [
-    "DELETE FROM user_badges WHERE telegram_id = ?1",
-    "DELETE FROM user_onboarding_answers WHERE telegram_id = ?1",
-    "DELETE FROM user_community_memberships WHERE telegram_id = ?1",
-    "DELETE FROM user_locations WHERE telegram_id = ?1",
-    "DELETE FROM users WHERE telegram_id = ?1",
-  ];
-
-  for (const query of deleteStatements) {
-    try {
-      await c.env.DB.prepare(query).bind(effectiveTelegramId).run();
-    } catch {
-      // Ignore missing tables to keep local reset resilient across migrations.
-    }
+  try {
+    await clearDemoUserState(c.env.DB, effectiveTelegramId, { deleteUser: true });
+  } catch {
+    // Ignore missing tables to keep local reset resilient across migrations.
   }
 
   return c.json({ ok: true, reset: true });

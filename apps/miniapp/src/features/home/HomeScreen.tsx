@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { CommunityCard } from "@qahal/shared";
-import { resolveBadgeDefinition } from "../../app/types";
-import type { EffectiveProfileSnapshot, HomeVariant } from "../../app/types";
-import { getBadgeLocalized, useI18n } from "../../app/i18n";
-import { HomePopups } from "./components/HomePopups";
-import { JoinRequestToast } from "./components/JoinRequestToast";
+import { MeetingLink } from '../manage/MeetingLink';
+import { useEffect, useState } from 'react';
+import type { CitySuggestion, CommunityCard, DiscoveryResponse } from '@qahal/shared';
+import type { EffectiveProfileSnapshot, HomeVariant } from '../../app/types';
+import { useI18n } from '../../app/i18n';
+import { redesignCopy } from '../../app/i18n/redesign';
+import { api } from '../../lib/api';
+import { CitySearch } from '../onboarding/CitySearch';
+import { requestTelegramLocation, hapticSuccess } from '../../lib/telegram';
 
 interface HomeScreenProps {
+  telegramId: number;
+  city: string;
+  latitude?: number;
+  longitude?: number;
+  onAreaChange: (city: CitySuggestion) => void;
   variant: HomeVariant;
   communities: CommunityCard[];
   onVariantChange: (variant: HomeVariant) => void;
@@ -16,662 +23,267 @@ interface HomeScreenProps {
   profileTestingEnabled: boolean;
   effectiveProfile: EffectiveProfileSnapshot;
 }
-
-/* ── SVG icons extracted from Paper (4V3-0) ── */
-const HomeIcon = ({ color }: { color: string }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M3 12L5 10M5 10L12 3L19 10M5 10V20C5 20.552 5.448 21 6 21H9M19 10L21 12M19 10V20C19 20.552 18.552 21 18 21H15M9 21C9.552 21 10 20.552 10 20V16C10 15.448 10.448 15 11 15H13C13.552 15 14 15.448 14 16V20C14 20.552 14.448 21 15 21M9 21H15"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-const MapIcon = ({ color }: { color: string }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M9 20L3 17V4L9 7M9 20L15 17M9 20V7M15 17L21 20V7L15 4M15 17V4M9 7L15 4"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-const ProfileIcon = ({ color }: { color: string }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M16 7C16 9.209 14.209 11 12 11C9.791 11 8 9.209 8 7C8 4.791 9.791 3 12 3C14.209 3 16 4.791 16 7Z"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M12 14C8.134 14 5 17.134 5 21H19C19 17.134 15.866 14 12 14Z"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-const PlusIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M12 5V19M5 12H19"
-      stroke="#F5F0E8"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-const SettingsIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M12 15.5C13.933 15.5 15.5 13.933 15.5 12C15.5 10.067 13.933 8.5 12 8.5C10.067 8.5 8.5 10.067 8.5 12C8.5 13.933 10.067 15.5 12 15.5Z"
-      stroke="#F5F0E8"
-      strokeWidth="1.8"
-    />
-    <path
-      d="M19.4 15A1.65 1.65 0 0 0 19.73 16.82L19.79 16.88A2 2 0 1 1 16.96 19.71L16.9 19.65A1.65 1.65 0 0 0 15.08 19.32A1.65 1.65 0 0 0 14 20.83V21A2 2 0 1 1 10 21V20.91A1.65 1.65 0 0 0 8.92 19.4A1.65 1.65 0 0 0 7.1 19.73L7.04 19.79A2 2 0 1 1 4.21 16.96L4.27 16.9A1.65 1.65 0 0 0 4.6 15.08A1.65 1.65 0 0 0 3.09 14H3A2 2 0 1 1 3 10H3.09A1.65 1.65 0 0 0 4.6 8.92A1.65 1.65 0 0 0 4.27 7.1L4.21 7.04A2 2 0 1 1 7.04 4.21L7.1 4.27A1.65 1.65 0 0 0 8.92 4.6H9A1.65 1.65 0 0 0 10 3.09V3A2 2 0 1 1 14 3V3.09A1.65 1.65 0 0 0 15.08 4.6A1.65 1.65 0 0 0 16.9 4.27L16.96 4.21A2 2 0 1 1 19.79 7.04L19.73 7.1A1.65 1.65 0 0 0 19.4 8.92V9A1.65 1.65 0 0 0 20.91 10H21A2 2 0 1 1 21 14H20.91A1.65 1.65 0 0 0 19.4 15Z"
-      stroke="#F5F0E8"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-export const HomeScreen = ({
-  variant,
-  communities,
-  onVariantChange,
-  onGoMap,
-  onGoProfile,
-  onGoManageQahal,
-  profileTestingEnabled,
-  effectiveProfile,
-}: HomeScreenProps) => {
-  const { t } = useI18n();
-  const hasRequestedLocationPermission = useRef(false);
-  const [requestedCommunityIds, setRequestedCommunityIds] = useState<
-    Set<number>
-  >(new Set());
-  const [memberCommunityIds, setMemberCommunityIds] = useState<Set<number>>(
-    new Set(),
-  );
-  const [showToast, setShowToast] = useState(false);
+export function HomeScreen(props: HomeScreenProps) {
+  const { languageCode } = useI18n();
+  const copy = redesignCopy(languageCode);
+  const [type, setType] = useState<'in_person' | 'online'>('in_person');
+  const [radius, setRadius] = useState(25);
+  const [page, setPage] = useState(0);
+  const [revision, setRevision] = useState(0);
+  const [result, setResult] = useState<DiscoveryResponse | null>(null);
+  const [error, setError] = useState(false);
+  const [actionError, setActionError] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [locationError, setLocationError] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [country, setCountry] = useState('');
+  const [createType, setCreateType] = useState<'in_person' | 'online'>('in_person');
+  const hasArea = props.latitude !== undefined && props.longitude !== undefined;
   useEffect(() => {
-    if (hasRequestedLocationPermission.current) {
-      return;
+    let cancelled = false;
+    setResult(null);
+    setError(false);
+    if (type === 'in_person' && !hasArea) return;
+    const params = new URLSearchParams({ type, radiusKm: String(radius), page: String(page) });
+    if (hasArea) {
+      params.set('latitude', String(props.latitude));
+      params.set('longitude', String(props.longitude));
     }
-
-    hasRequestedLocationPermission.current = true;
-
-    if (!("geolocation" in navigator) || !window.isSecureContext) {
-      return;
+    api
+      .discovery(params)
+      .then((value) => {
+        if (!cancelled) setResult(value);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [type, radius, page, revision, hasArea, props.latitude, props.longitude]);
+  async function action(run: () => Promise<unknown>) {
+    setBusy(true);
+    setActionError(false);
+    try {
+      await run();
+      hapticSuccess();
+      setRevision((v) => v + 1);
+    } catch {
+      setActionError(true);
+    } finally {
+      setBusy(false);
     }
-
-    navigator.geolocation.getCurrentPosition(
-      () => {
-        // Permission prompt is intentional on Home; position is not needed here.
-      },
-      () => {
-        // Permission can be denied; Home should remain fully usable.
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 10000,
-        maximumAge: 300000,
-      },
-    );
-  }, []);
-
-  useEffect(() => {
-    const initiallyRequested = new Set<number>();
-    const initiallyMember = new Set<number>();
-    for (const community of communities) {
-      if (community.memberState === "requested") {
-        initiallyRequested.add(community.id);
-      }
-      if (community.memberState === "member") {
-        initiallyMember.add(community.id);
-      }
-    }
-
-    setRequestedCommunityIds((prev) => {
-      const next = new Set(prev);
-      initiallyRequested.forEach((id) => next.add(id));
-      return next;
-    });
-
-    setMemberCommunityIds(initiallyMember);
-  }, [communities]);
-
-  useEffect(() => {
-    if (!showToast) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setShowToast(false);
-      if (variant === "join-requested") {
-        onVariantChange("default");
-      }
-    }, 2200);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [showToast, variant, onVariantChange]);
-
-  const displayedCommunities = useMemo(() => {
-    return communities.map((community) => {
-      if (memberCommunityIds.has(community.id)) {
-        return {
-          ...community,
-          memberState: "member" as const,
-        };
-      }
-
-      const requested = requestedCommunityIds.has(community.id);
-      if (!requested) {
-        return community;
-      }
-
-      return {
-        ...community,
-        memberState: "requested" as const,
-      };
-    });
-  }, [communities, requestedCommunityIds, memberCommunityIds]);
-
-  const badgeShowcase = useMemo(() => {
-    return ["Emunah", "Kehilah", "Years in Emunah (0)", "Messenger", "Hebrew Teacher", "Hebrew Student"].map(
-      (badgeName) => getBadgeLocalized(t, badgeName),
-    );
-  }, [t]);
-
-  const earnedBadgeKinds = useMemo(() => {
-    const set = new Set<string>();
-    for (const badgeName of effectiveProfile.badges) {
-      set.add(resolveBadgeDefinition(badgeName).kind);
-    }
-    return set;
-  }, [effectiveProfile.badges]);
-
-  const showManageCard = effectiveProfile.canManageQahal;
-  const showCreateCard = !showManageCard && effectiveProfile.canCreateQahal;
-
+  }
   return (
-    <section className="relative flex h-[100dvh] flex-col overflow-hidden">
-      {/* Paper 4RR-0: light parchment gradient background */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "var(--theme-bg-main)",
-        }}
-      />
-      {/* Paper 4RS-0: warm radial overlays */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "var(--theme-bg-overlay)",
-        }}
-      />
-
-      {/* Scrollable content */}
-      <div className="relative z-10 flex flex-1 flex-col overflow-y-auto pb-[120px]">
-        {/* Header — Paper 4S7-0 */}
-        <header
-          className="flex items-center"
-          style={{ padding: "64px 24px 16px 24px" }}
-        >
-          {/* Paper 4S8-0 */}
-          <h1
-            className="qahal-display"
-            style={{
-              fontSize: 32,
-              lineHeight: "38px",
-              fontWeight: 700,
-              color: "var(--theme-text-primary)",
-            }}
-          >
-            {t.common.home}
-          </h1>
-        </header>
-
-        {/* Cards */}
-        <div className="flex flex-col gap-[16px] px-[24px]">
-          {/* Create / Manage Qahal Card */}
-          {showCreateCard ? (
-            <div
-              className="flex flex-col gap-[12px]"
-              style={{
-                borderRadius: 20,
-                padding: 24,
-                backgroundImage: "var(--theme-home-create-gradient)",
-                boxShadow: "var(--theme-home-create-shadow)",
-              }}
-            >
-              <div
-                className="flex h-[44px] w-[44px] items-center justify-center rounded-full"
-                style={{ background: "#FFFFFF26" }}
-              >
-                <PlusIcon />
-              </div>
-              <h2
-                className="qahal-display"
-                style={{ fontSize: 22, fontWeight: 700, color: "#F5F0E8" }}
-              >
-                {t.home.createQahalTitle}
-              </h2>
-              <p style={{ fontSize: 13, color: "#F5F0E8BF" }}>
-                {t.home.createQahalBody}
-              </p>
-              <button
-                type="button"
-                onClick={() => onVariantChange("qahal-exists")}
-                className="flex items-center justify-center"
-                style={{
-                  height: 44,
-                  borderRadius: 14,
-                  background: "#F5F0E826",
-                  border: "1px solid #F5F0E84D",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "#F5F0E8",
-                }}
-              >
-                {t.home.createQahalCta}
-              </button>
-            </div>
-          ) : null}
-
-          {showManageCard ? (
-            <div
-              className="flex flex-col gap-[12px]"
-              style={{
-                borderRadius: 20,
-                padding: 24,
-                backgroundImage: "var(--theme-home-create-gradient)",
-                boxShadow: "var(--theme-home-create-shadow)",
-              }}
-            >
-              <div
-                className="flex h-[44px] w-[44px] items-center justify-center rounded-full"
-                style={{ background: "#FFFFFF26" }}
-              >
-                <SettingsIcon />
-              </div>
-              <h2
-                className="qahal-display"
-                style={{ fontSize: 22, fontWeight: 700, color: "#F5F0E8" }}
-              >
-                {t.home.manageQahalTitle}
-              </h2>
-              <p style={{ fontSize: 13, color: "#F5F0E8BF" }}>
-                {t.home.manageQahalBody}
-              </p>
-              <button
-                type="button"
-                onClick={onGoManageQahal}
-                className="flex items-center justify-center"
-                style={{
-                  height: 44,
-                  borderRadius: 14,
-                  background: "#F5F0E826",
-                  border: "1px solid #F5F0E84D",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "#F5F0E8",
-                }}
-              >
-                {t.home.manageQahalCta}
-              </button>
-            </div>
-          ) : null}
-
-          {/* Near You Card — Paper 4SL-0 */}
-          <div
-            className="flex flex-col gap-[16px]"
-            style={{
-              borderRadius: 20,
-              padding: 24,
-              backgroundImage: "var(--theme-home-near-gradient)",
-              boxShadow: "var(--theme-home-near-shadow)",
-            }}
-          >
-            <h2
-              className="qahal-display"
-              style={{ fontSize: 22, fontWeight: 700, color: "#F5F0E8" }}
-            >
-              {t.home.nearYouTitle}
-            </h2>
-            <div className="flex flex-col gap-[8px]">
-              {displayedCommunities.length === 0 ? (
-                <p style={{ fontSize: 13, color: "#F5F0E8BF" }}>{t.home.nearYouEmpty}</p>
-              ) : (
-                displayedCommunities.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex flex-col gap-[10px]"
-                    style={{
-                      borderRadius: 14,
-                      padding: "12px 14px",
-                      background: "#F5F0E81F",
-                      border: "1px solid #F5F0E833",
-                    }}
-                  >
-                    <div className="flex items-center gap-[12px]">
-                      {/* Avatar */}
-                      <div
-                        className="flex shrink-0 items-center justify-center rounded-[10px]"
-                        style={{
-                          width: 36,
-                          height: 36,
-                          background: "#F5F0E833",
-                          fontSize: 16,
-                          color: "#F5F0E8",
-                        }}
-                      >
-                        {c.name.charAt(0)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div
-                          className="qahal-display overflow-hidden text-ellipsis whitespace-nowrap"
-                          style={{
-                            fontSize: 17,
-                            fontWeight: 600,
-                            color: "#F5F0E8",
-                          }}
-                        >
-                          {c.name}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#F5F0E8A6" }}>
-                          {c.city} · {c.distanceKm.toFixed(1)} km
-                        </div>
-                      </div>
-                    </div>
-
-                    {c.memberState === "member" ? (
-                      <button
-                        type="button"
-                        className="flex items-center justify-center"
-                        style={{
-                          height: 38,
-                          width: "100%",
-                          borderRadius: 10,
-                          padding: "0 12px",
-                          background: "#F5F0E866",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#F5F0E8",
-                          letterSpacing: "0.04em",
-                        }}
-                      >
-                        {t.home.member.toUpperCase()}
-                      </button>
-                    ) : (
-                      <div className="flex gap-[6px]">
-                        <button
-                          type="button"
-                          className="flex items-center justify-center"
-                          style={{
-                            height: 38,
-                            flex: 1,
-                            borderRadius: 10,
-                            padding: "0 12px",
-                            background: "#F5F0E826",
-                            border: "1px solid #F5F0E840",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: "#F5F0E8",
-                          }}
-                        >
-                          {t.home.contact}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (
-                              profileTestingEnabled &&
-                              c.memberState === "requested"
-                            ) {
-                              setRequestedCommunityIds((prev) => {
-                                const next = new Set(prev);
-                                next.delete(c.id);
-                                return next;
-                              });
-                              onVariantChange("default");
-                              return;
-                            }
-
-                            if (c.memberState !== "not_member") {
-                              onVariantChange(
-                                c.memberState === "member"
-                                  ? "already-member"
-                                  : "already-requested",
-                              );
-                              return;
-                            }
-
-                            const hasActiveMembership =
-                              displayedCommunities.some(
-                                (community) =>
-                                  community.memberState === "member",
-                              );
-                            if (
-                              hasActiveMembership ||
-                              effectiveProfile.hasCongregation
-                            ) {
-                              onVariantChange("already-member");
-                              return;
-                            }
-
-                            const hasPendingRequest = displayedCommunities.some(
-                              (community) =>
-                                community.memberState === "requested",
-                            );
-                            if (hasPendingRequest) {
-                              onVariantChange("already-requested");
-                              return;
-                            }
-
-                            setRequestedCommunityIds((prev) => {
-                              const next = new Set(prev);
-                              next.add(c.id);
-                              return next;
-                            });
-                            setShowToast(true);
-                            onVariantChange("join-requested");
-                          }}
-                          className="flex items-center justify-center"
-                          style={{
-                            height: 38,
-                            flex: 1,
-                            borderRadius: 10,
-                            padding: "0 12px",
-                            background:
-                              c.memberState === "not_member" ||
-                              (profileTestingEnabled &&
-                                c.memberState === "requested")
-                                ? "#F5F0E8"
-                                : "#F5F0E866",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color:
-                              c.memberState === "not_member" ||
-                              (profileTestingEnabled &&
-                                c.memberState === "requested")
-                                ? "#A0622D"
-                                : "#6B7280",
-                          }}
-                        >
-                          {c.memberState === "requested"
-                            ? profileTestingEnabled
-                              ? t.home.undoRequest
-                              : t.home.requested
-                            : t.home.join}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Badges Card — Paper 4TH-0 */}
-          <div
-            className="flex flex-col gap-[16px]"
-            style={{
-              borderRadius: 20,
-              padding: 24,
-              backgroundImage: "var(--theme-home-badge-gradient)",
-              boxShadow: "var(--theme-home-badge-shadow)",
-            }}
-          >
-            <h2
-              className="qahal-display"
-              style={{ fontSize: 22, fontWeight: 700, color: "#F5F0E8" }}
-            >
-              {t.home.badgesTitle}
-            </h2>
-            {badgeShowcase.map((badge) => {
-              const earned = earnedBadgeKinds.has(badge.kind);
-              return (
-                <div
-                  key={badge.name}
-                  className="flex items-center gap-[12px]"
-                  style={{
-                    borderRadius: 14,
-                    padding: "12px 14px",
-                    background: "#F5F0E81F",
-                    border: "1px solid #F5F0E833",
-                  }}
-                >
-                  <div className="flex-1">
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "#F5F0E8",
-                      }}
-                    >
-                      {badge.name}
-                      {earned ? ` · ${t.home.earnedSuffix}` : ""}
-                    </div>
-                    <div style={{ fontSize: 12, color: "#F5F0E899" }}>
-                      {badge.desc}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Nav — Paper 4V3-0 */}
-      <div
-        className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-[375px] -translate-x-1/2 flex-col items-center"
-        style={{
-          backgroundImage: "var(--theme-nav-gradient)",
-          paddingBottom: 24,
-          paddingTop: 20,
-        }}
-      >
-        <div className="flex w-[327px] items-center justify-around py-[12px]">
-          {/* Home — active */}
-          <button
-            type="button"
-            className="flex w-[84px] flex-col items-center gap-[4px]"
-            onClick={() => onVariantChange("default")}
-          >
-            <div
-              className="flex items-center justify-center rounded-full"
-              style={{
-                width: 48,
-                height: 48,
-                background: "var(--theme-accent)",
-                boxShadow: "#1E5C5A4D 0px 4px 12px",
-              }}
-            >
-              <HomeIcon color="#F5F0E8" />
-            </div>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--theme-accent)",
-                minHeight: 16,
-                lineHeight: "16px",
-                visibility: "hidden",
-              }}
-            >
-              {t.common.home}
-            </span>
-          </button>
-          {/* Map */}
-          <button
-            type="button"
-            className="flex w-[84px] flex-col items-center gap-[4px]"
-            onClick={onGoMap}
-          >
-            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-full">
-              <MapIcon color="var(--theme-accent)" />
-            </div>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--theme-accent)",
-                minHeight: 16,
-                lineHeight: "16px",
-              }}
-            >
-              {t.common.map}
-            </span>
-          </button>
-          {/* Profile */}
-          <button
-            type="button"
-            className="flex w-[84px] flex-col items-center gap-[4px]"
-            onClick={onGoProfile}
-          >
-            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-full">
-              <ProfileIcon color="var(--theme-accent)" />
-            </div>
-            <span
-              style={{
-                fontSize: 11,
-                color: "var(--theme-accent)",
-                minHeight: 16,
-                lineHeight: "16px",
-              }}
-            >
-              {t.common.profile}
-            </span>
-          </button>
-        </div>
-        {/* Home indicator bar */}
-        <div
-          style={{
-            width: 134,
-            height: 5,
-            borderRadius: 100,
-            background: "#1C2526",
-            opacity: 0.2,
+    <main className="redesign-screen" dir={languageCode === 'he' ? 'rtl' : 'ltr'}>
+      <h1 className="qahal-display text-3xl">Qahal</h1>
+      <div role="tablist" aria-label="Qahal">
+        <button
+          role="tab"
+          aria-selected={type === 'in_person'}
+          onClick={() => {
+            setType('in_person');
+            setPage(0);
           }}
-        />
+        >
+          {copy.local}
+        </button>
+        <button
+          role="tab"
+          aria-selected={type === 'online'}
+          onClick={() => {
+            setType('online');
+            setPage(0);
+          }}
+        >
+          {copy.online}
+        </button>
       </div>
-
-      <HomePopups
-        variant={variant}
-        onClose={() => onVariantChange("default")}
-      />
-
-      <JoinRequestToast visible={showToast} />
-    </section>
+      {type === 'in_person' && (
+        <section className="redesign-card">
+          <h2>{copy.area}</h2>
+          <CitySearch
+            telegramId={props.telegramId}
+            initialValue={props.city}
+            onCitySelected={(city) => {
+              props.onAreaChange(city);
+              setCountry(city.country);
+              setPage(0);
+            }}
+          />
+          <button
+            disabled={busy}
+            onClick={() =>
+              void action(async () => {
+                try {
+                  const location = await requestTelegramLocation();
+                  await api.upsertLocation({ telegramId: props.telegramId, ...location });
+                  props.onAreaChange({
+                    ...location,
+                    city: props.city,
+                    state: '',
+                    country: '',
+                    label: props.city,
+                  });
+                  setLocationError(false);
+                  setPage(0);
+                } catch {
+                  setLocationError(true);
+                }
+              })
+            }
+          >
+            {copy.location}
+          </button>
+          {locationError && <p role="status">{copy.locationFailed}</p>}
+          <label>
+            {copy.radius}
+            <select
+              value={radius}
+              onChange={(e) => {
+                setRadius(Number(e.target.value));
+                setPage(0);
+              }}
+            >
+              {[10, 25, 50, 100].map((n) => (
+                <option key={n} value={n}>
+                  {n} km
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-sm">{copy.approximate}</p>
+        </section>
+      )}
+      {error ? (
+        <section role="alert">
+          <p>{copy.error}</p>
+          <button onClick={() => setRevision((v) => v + 1)}>{copy.retry}</button>
+        </section>
+      ) : !result ? (
+        (type === 'online' || hasArea) && <p role="status">{copy.loading}</p>
+      ) : (
+        <section aria-live="polite">
+          {result.communities.map((community) => (
+            <article key={community.id} className="redesign-card">
+              <h2 className="text-xl">{community.name}</h2>
+              <p>
+                {community.type === 'online'
+                  ? copy.online
+                  : `${community.city ?? ''} · ~${community.distanceKm} km`}
+              </p>
+              {community.canManage ? (
+                <button onClick={props.onGoManageQahal}>{copy.manage}</button>
+              ) : (
+                <button
+                  disabled={busy || community.memberState !== 'not_member'}
+                  onClick={() => void action(() => api.requestJoin(community.id, props.telegramId))}
+                >
+                  {community.memberState === 'member'
+                    ? copy.member
+                    : community.memberState === 'requested'
+                      ? copy.requested
+                      : copy.join}
+                </button>
+              )}
+              {community.memberState === 'member' && (
+                <MeetingLink communityId={community.id} telegramId={props.telegramId} />
+              )}
+            </article>
+          ))}
+          {result.communities.length === 0 && (
+            <>
+              <p>{type === 'online' ? copy.noOnline : copy.empty}</p>
+              {type === 'in_person' && !result.people.length && <p>{copy.noPeople}</p>}
+              {result.people.map((person) => (
+                <article key={person.id} className="redesign-card">
+                  <h2>{person.name}</h2>
+                  <p>{person.area}</p>
+                  {person.contactUrl && (
+                    <a href={person.contactUrl} target="_blank" rel="noreferrer">
+                      {copy.contact}
+                    </a>
+                  )}
+                </article>
+              ))}
+            </>
+          )}
+          <div className="flex gap-2">
+            {page > 0 && <button onClick={() => setPage((v) => v - 1)}>{copy.previous}</button>}
+            {result.nextPage !== null && (
+              <button onClick={() => setPage(result.nextPage!)}>{copy.next}</button>
+            )}
+          </div>
+        </section>
+      )}
+      {actionError && <p role="alert">{copy.error}</p>}
+      {props.effectiveProfile.canManageQahal && (
+        <button onClick={props.onGoManageQahal}>{copy.manage}</button>
+      )}
+      {props.effectiveProfile.canCreateQahal && (
+        <button onClick={() => setCreating((v) => !v)}>{copy.create}</button>
+      )}
+      {creating && (
+        <form
+          className="redesign-card"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void action(async () => {
+              await api.createCommunity(
+                createType === 'online'
+                  ? { telegramId: props.telegramId, name, type: 'online' }
+                  : {
+                      telegramId: props.telegramId,
+                      name,
+                      type: 'in_person',
+                      city: props.city,
+                      country,
+                      latitude: props.latitude!,
+                      longitude: props.longitude!,
+                    },
+              );
+              setCreating(false);
+              props.onGoManageQahal();
+            });
+          }}
+        >
+          <label>
+            {copy.name}
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              minLength={2}
+              maxLength={120}
+              required
+            />
+          </label>
+          <select
+            aria-label={copy.create}
+            value={createType}
+            onChange={(e) => setCreateType(e.target.value as typeof createType)}
+          >
+            <option value="in_person">{copy.inPerson}</option>
+            <option value="online">{copy.online}</option>
+          </select>
+          {createType === 'in_person' && (
+            <>
+              <p>{props.city || copy.area}</p>
+              <label>
+                {copy.country}
+                <input required value={country} onChange={(e) => setCountry(e.target.value)} />
+              </label>
+            </>
+          )}
+          <button disabled={busy || (createType === 'in_person' && (!hasArea || !props.city))}>
+            {copy.save}
+          </button>
+        </form>
+      )}
+      <nav className="redesign-nav">
+        <button aria-current="page">{copy.home}</button>
+        <button onClick={props.onGoProfile}>{copy.profile}</button>
+      </nav>
+    </main>
   );
-};
+}

@@ -9,6 +9,8 @@
     "deploy:production": "wrangler deploy --env production --config wrangler.toml",
     "build": "wrangler deploy --dry-run --outdir build --config wrangler.toml",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
     "cf:login": "wrangler login",
     "cf:whoami": "wrangler whoami",
     "cf:d1:create:test": "wrangler d1 create qahal-db-test",

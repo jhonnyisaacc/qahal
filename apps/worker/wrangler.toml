@@ -10,7 +10,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "qahal-db-test"
-database_id = "81652040-b23b-4841-bd48-a129b3d34d5a"
+database_id = "f016df17-62b2-4a2d-9053-4db87b6fd5df"
 migrations_dir = "migrations"
 
 [vars]
@@ -18,6 +18,7 @@ migrations_dir = "migrations"
 # CORS_ALLOWED_ORIGINS = "https://development.qahal.xyz,https://app.qahal.xyz"
 CORS_ALLOWED_ORIGINS = "https://development.qahal.xyz,https://app.qahal.xyz"
 APP_ENV = "development"
+INVITE_GATE_ENABLED = "true"
 
 [[routes]]
 pattern = "api-development.qahal.xyz"
@@ -26,6 +27,7 @@ custom_domain = true
 
 [env.production.vars]
 APP_ENV = "production"
+INVITE_GATE_ENABLED = "true"
 CORS_ALLOWED_ORIGINS = "https://development.qahal.xyz,https://app.qahal.xyz"
 
 [env.production]
@@ -41,5 +43,5 @@ custom_domain = true
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "qahal-db-prod"
-database_id = "bc3c7a13-6714-4396-af65-728eda27aa7c"
+database_id = "1656b753-16ac-4658-ad51-addc7c9b59f8"
 migrations_dir = "migrations"

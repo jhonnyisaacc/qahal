@@ -1,0 +1,45 @@
+# Qahal Project Rules (Cursor)
+
+This file provides project-specific guidance for Cursor when working on the Qahal codebase.
+
+## Core References (Always Read These First)
+
+- **AGENTS.md** (root) — Primary coding guide, runtime, tech stack, monorepo boundaries, Telegram compliance, security.
+- **DESIGN.md** (root) — **Single source of truth** for all visual, branding, color, typography, spacing, and component decisions.
+
+## Mandatory Rules
+
+1. **Design System**
+   - Never implement UI or styling changes without consulting `DESIGN.md`.
+   - Use only the colors, fonts, spacing, and component patterns defined in DESIGN.md.
+   - Brand materials are Purple, Ink, Paper and Black (dark ground). The extracted Qof mark is the splash/logo. No avatars or entity photos.
+
+2. **Runtime**
+   - Use **Bun** exclusively (`bun install`, `bun run`, `bunx`).
+   - Never use npm, yarn, or pnpm.
+
+3. **Architecture**
+   - `apps/miniapp` → frontend only (never touches D1 directly).
+   - `apps/worker` → backend only (never imports React).
+   - `packages/shared` → framework-agnostic schemas and DTOs.
+
+4. **Telegram Mini App**
+   - Always follow the required boot sequence and initData validation rules from AGENTS.md.
+
+5. **File Naming**
+   - Follow the conventions in AGENTS.md §7.
+
+## When Making Changes
+
+- For any UI/branding work → read `DESIGN.md` first.
+- For architecture, API, or backend work → follow `AGENTS.md`.
+- Run `bun run check` and `bun run build` before considering any change complete.
+
+## Cursor-Specific
+
+- Always prefer reading the two root markdown files (`AGENTS.md` + `DESIGN.md`) before suggesting code.
+- When the user asks for design-related changes, explicitly reference tokens from DESIGN.md.
+
+## Design authority
+
+Follow DESIGN.md for Manrope, Purple/Ink/Paper/Black, Purple 800 actions, sheet layouts and the current screen inventory. Live draft screens are design/qahal.pen (Pen MCP only). The workflow is docs/product/paper-to-code.md. Historical Paper references are not approved Pen visuals.

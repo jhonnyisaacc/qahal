@@ -19,6 +19,14 @@
     "check:shared": "bun run --filter @qahal/shared typecheck",
     "check:miniapp": "bun run --filter @qahal/miniapp typecheck",
     "check:worker": "bun run --filter @qahal/worker typecheck",
+    "test": "bun run test:shared && bun run test:worker && bun run test:miniapp",
+    "test:shared": "bun run --filter @qahal/shared test",
+    "test:worker": "bun run --filter @qahal/worker test",
+    "test:miniapp": "bun run --filter @qahal/miniapp test",
+    "test:e2e:setup": "playwright install chromium",
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "format": "prettier --write .",
+    "prepare": "husky",
     "cf:login": "bun --env-file=.env run --filter @qahal/worker cf:login",
     "cf:whoami": "bun --env-file=.env run --filter @qahal/worker cf:whoami",
     "cf:d1:create:test": "bun --env-file=.env run --filter @qahal/worker cf:d1:create:test",
@@ -33,5 +41,19 @@
     "cf:deploy:prod": "bun --env-file=.env run --filter @qahal/worker cf:deploy:prod",
     "cf:tail:test": "bun --env-file=.env run --filter @qahal/worker cf:tail:test",
     "cf:tail:prod": "bun --env-file=.env run --filter @qahal/worker cf:tail:prod"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.16.9",
+    "@playwright/test": "^1.60.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^15.5.0",
+    "msw": "^2.14.6",
+    "prettier": "^3.5.0",
+    "vitest": "^4.1.7"
   }
 }

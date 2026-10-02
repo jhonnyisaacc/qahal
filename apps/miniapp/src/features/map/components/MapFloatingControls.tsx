@@ -47,7 +47,7 @@ export const MapFloatingControls = ({
       <button
         type="button"
         onClick={onTogglePeople}
-        className="absolute right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#C9A46F] text-[16px] font-bold text-[#F5F0E8] shadow-[0_8px_20px_rgba(30,92,90,0.42),0_0_0_2px_rgba(245,240,232,0.22)]"
+        className="absolute right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full border-2 border-[var(--brand-purple)] text-[16px] font-bold text-[#F5F0E8] shadow-[0_8px_20px_rgba(30,92,90,0.42),0_0_0_2px_rgba(245,240,232,0.22)]"
         style={{
           bottom: 178,
           background: "var(--theme-accent)",

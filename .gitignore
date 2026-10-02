@@ -17,3 +17,19 @@ coverage/
 
 # OS
 .DS_Store
+
+# Browser test artifacts
+test-results/
+playwright-report/
+
+# Rails / Ruby (app-scoped rules live in apps/api/.gitignore)
+*.rbc
+capybara-*.html
+.rspec_status
+.byebug_history
+.bundle/
+vendor/bundle/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.sqlite3-journal

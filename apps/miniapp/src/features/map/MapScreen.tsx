@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MapView } from "./MapView";
 import type { CommunityCard } from "@qahal/shared";
-import type { MapVariant } from "../../app/types";
+import type { EffectiveProfileSnapshot, MapVariant } from "../../app/types";
 import { api, type CommunityPerson } from "../../lib/api";
 import { MapFloatingControls } from "./components/MapFloatingControls";
 import { MapPeoplePanel } from "./components/MapPeoplePanel";
@@ -16,6 +16,7 @@ interface MapScreenProps {
   themeMode: ThemeMode;
   variant: MapVariant;
   communities: CommunityCard[];
+  effectiveProfile: EffectiveProfileSnapshot;
   onVariantChange: (variant: MapVariant) => void;
   onGoHome: () => void;
   onGoProfile: () => void;
@@ -31,6 +32,7 @@ interface MapScreenProps {
 export const MapScreen = ({
   themeMode,
   variant,
+  effectiveProfile,
   onVariantChange,
   onGoHome,
   onGoProfile,
@@ -52,6 +54,7 @@ export const MapScreen = ({
   const [selectedPerson, setSelectedPerson] = useState<CommunityPerson | null>(
     null,
   );
+  const isStartingUser = effectiveProfile.emunahState === "starting";
 
   useEffect(() => {
     setMapCenter(initialCenter);
@@ -184,6 +187,12 @@ export const MapScreen = ({
         }}
       />
 
+      {isStartingUser ? (
+        <div className="absolute left-3 right-3 top-[112px] z-30 rounded-2xl bg-brand-purple/12 px-4 py-3 text-sm text-brand-navy shadow-sm backdrop-blur">
+          {t.home.startingNotice}
+        </div>
+      ) : null}
+
       {peoplePanelVisible ? (
         <button
           type="button"
@@ -212,6 +221,8 @@ export const MapScreen = ({
 
       <MapPersonSheet
         person={selectedPerson}
+        canMessage={!isStartingUser}
+        disabledLabel={t.map.contactBlocked}
         onClose={() => setSelectedPerson(null)}
         onMessage={onGoHome}
       />

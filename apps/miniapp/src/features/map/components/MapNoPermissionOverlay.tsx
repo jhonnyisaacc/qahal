@@ -51,7 +51,7 @@ export const MapNoPermissionOverlay = ({ visible, onEnable }: MapNoPermissionOve
             height: 48,
             borderRadius: 14,
             background: "#1E5C5A",
-            border: "2px solid #C9A46F",
+            border: "2px solid var(--brand-purple)",
             fontSize: 15,
             fontWeight: 600,
             color: "#F5F0E8",

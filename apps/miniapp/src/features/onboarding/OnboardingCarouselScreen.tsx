@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
-import { useI18n } from "../../app/i18n";
+import { useState, useRef, useCallback } from 'react';
+import { useI18n } from '../../app/i18n';
 
 interface OnboardingCarouselScreenProps {
   onStart: () => void;
@@ -7,13 +7,37 @@ interface OnboardingCarouselScreenProps {
 
 const TOTAL_SLIDES = 3;
 
-export const OnboardingCarouselScreen = ({
-  onStart,
-}: OnboardingCarouselScreenProps) => {
+export const OnboardingCarouselScreen = ({ onStart }: OnboardingCarouselScreenProps) => {
   const { t } = useI18n();
   const [slide, setSlide] = useState(0);
   const touchRef = useRef({ startX: 0, delta: 0, active: false });
   const [dragDelta, setDragDelta] = useState(0);
+
+  const primaryActionStyle = {
+    width: '100%',
+    minHeight: 52,
+    borderRadius: 14,
+    border: '1px solid var(--theme-button-primary-border)',
+    background: 'var(--theme-button-primary-bg)',
+    boxShadow: 'var(--theme-button-primary-shadow)',
+    color: 'var(--theme-button-primary-text)',
+    fontSize: 16,
+    fontWeight: 600,
+    letterSpacing: '0.02em',
+  } satisfies React.CSSProperties;
+
+  const secondaryActionStyle = {
+    width: '100%',
+    minHeight: 52,
+    borderRadius: 14,
+    border: '1px solid var(--theme-button-secondary-border)',
+    background: 'var(--theme-button-secondary-bg)',
+    color: 'var(--theme-button-secondary-text)',
+    fontSize: 16,
+    fontWeight: 600,
+    letterSpacing: '0.01em',
+    boxShadow: 'var(--theme-card-shadow)',
+  } satisfies React.CSSProperties;
 
   const goTo = useCallback((i: number) => {
     setSlide(Math.max(0, Math.min(TOTAL_SLIDES - 1, i)));
@@ -59,9 +83,11 @@ export const OnboardingCarouselScreen = ({
   }, [slide, goTo]);
 
   const delta = touchRef.current.active ? dragDelta : 0;
-  const transition = touchRef.current.active
-    ? "none"
-    : "transform 0.3s ease-out";
+  const transition = touchRef.current.active ? 'none' : 'transform 0.3s ease-out';
+
+  const slideShellStyle = {
+    paddingBottom: 'calc(28px + var(--safe-area-bottom))',
+  } satisfies React.CSSProperties;
 
   /* Progress dots — fills up as you advance (Paper XQ/XR/XS pattern) */
   const dots = (
@@ -72,9 +98,7 @@ export const OnboardingCarouselScreen = ({
           className="h-[3px] w-[28px] rounded-[2px]"
           style={{
             backgroundColor:
-              i <= slide
-                ? "var(--theme-accent)"
-                : "var(--theme-onboarding-dot-inactive)",
+              i <= slide ? 'var(--theme-accent)' : 'var(--theme-onboarding-dot-inactive)',
             opacity: 1,
           }}
         />
@@ -89,25 +113,19 @@ export const OnboardingCarouselScreen = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Paper KS-0: background gradient (shared) */}
+      {/* Solid warm background (pure, no radial overlays) */}
       <div
         className="absolute inset-0"
         style={{
-          background: "var(--theme-bg-main)",
-        }}
-      />
-      {/* Paper 206-0: radial overlays (shared) */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "var(--theme-bg-overlay)",
+          background: 'var(--theme-bg-main)',
         }}
       />
 
       {/* ─── Slide 1 — Paper KR-0 ─── */}
       <div
-        className="absolute inset-0 z-10 flex flex-col px-[20px] pb-[36px] pt-[56px]"
+        className="absolute inset-0 z-10 flex flex-col px-[20px] pt-[56px]"
         style={{
+          ...slideShellStyle,
           transform: `translateX(calc(${(0 - slide) * 100}% + ${delta}px))`,
           transition,
         }}
@@ -119,10 +137,10 @@ export const OnboardingCarouselScreen = ({
             style={{
               fontSize: 62,
               fontWeight: 700,
-              letterSpacing: "0.08em",
-              lineHeight: "76px",
-              color: "var(--theme-onboarding-title)",
-              textShadow: "var(--theme-onboarding-title-shadow)",
+              letterSpacing: '0.08em',
+              lineHeight: '76px',
+              color: 'var(--theme-onboarding-title)',
+              textShadow: 'var(--theme-onboarding-title-shadow)',
             }}
           >
             QAHAL
@@ -132,8 +150,8 @@ export const OnboardingCarouselScreen = ({
             className="qahal-display"
             style={{
               fontSize: 18,
-              letterSpacing: "0.15em",
-              color: "var(--theme-onboarding-subtitle)",
+              letterSpacing: '0.15em',
+              color: 'var(--theme-onboarding-subtitle)',
               opacity: 1,
             }}
           >
@@ -148,11 +166,10 @@ export const OnboardingCarouselScreen = ({
           className="text-center"
           style={{
             borderRadius: 16,
-            padding: "28px 24px",
-            background: "var(--theme-onboarding-card-bg)",
-            border: "1px solid var(--theme-onboarding-card-border)",
-            backdropFilter: "blur(8px)",
-            boxShadow: "var(--theme-onboarding-card-shadow)",
+            padding: '28px 24px',
+            background: 'var(--theme-onboarding-card-bg)',
+            border: '1px solid var(--theme-onboarding-card-border)',
+            boxShadow: 'var(--theme-onboarding-card-shadow)',
           }}
         >
           {/* Card heading — Paper XG-0 */}
@@ -160,9 +177,9 @@ export const OnboardingCarouselScreen = ({
             className="qahal-display"
             style={{
               fontSize: 26,
-              lineHeight: "32px",
+              lineHeight: '32px',
               fontWeight: 600,
-              color: "var(--theme-onboarding-title)",
+              color: 'var(--theme-onboarding-title)',
               marginBottom: 14,
             }}
           >
@@ -173,43 +190,29 @@ export const OnboardingCarouselScreen = ({
           <p
             style={{
               fontSize: 15,
-              lineHeight: "22px",
-              color: "var(--theme-onboarding-body)",
+              lineHeight: '22px',
+              color: 'var(--theme-onboarding-body)',
               opacity: 1,
             }}
           >
             {t.onboardingCarousel.slide1Subtitle}
           </p>
 
-          {/* Button — single Go! */}
-          <div className="mt-[20px]">
-            <button
-              type="button"
-              onClick={() => goTo(1)}
-              style={{
-                width: "100%",
-                height: 52,
-                borderRadius: 14,
-                background: "var(--theme-accent)",
-                border: "2px solid #C9A46F",
-                boxShadow: "#1E5C5A40 0px 2px 8px",
-                fontSize: 16,
-                letterSpacing: "0.04em",
-                color: "#FFFFFF",
-              }}
-            >
-              {t.onboardingCarousel.slide1Button}
-            </button>
-          </div>
-
           <div className="mt-[20px]">{dots}</div>
+        </div>
+
+        <div className="mt-[16px]">
+          <button type="button" onClick={() => goTo(1)} style={primaryActionStyle}>
+            {t.onboardingCarousel.slide1Button}
+          </button>
         </div>
       </div>
 
       {/* ─── Slide 2 — Paper XT-0 ─── */}
       <div
-        className="absolute inset-0 z-10 flex flex-col px-[20px] pb-[36px] pt-[56px]"
+        className="absolute inset-0 z-10 flex flex-col px-[20px] pt-[56px]"
         style={{
+          ...slideShellStyle,
           transform: `translateX(calc(${(1 - slide) * 100}% + ${delta}px))`,
           transition,
         }}
@@ -219,10 +222,10 @@ export const OnboardingCarouselScreen = ({
           className="qahal-display mt-[24px] text-center"
           style={{
             fontSize: 40,
-            lineHeight: "46px",
+            lineHeight: '46px',
             fontWeight: 700,
-            color: "var(--theme-onboarding-title)",
-            textShadow: "var(--theme-onboarding-title-shadow)",
+            color: 'var(--theme-onboarding-title)',
+            textShadow: 'var(--theme-onboarding-title-shadow)',
           }}
         >
           {t.onboardingCarousel.slide2Title}
@@ -235,21 +238,20 @@ export const OnboardingCarouselScreen = ({
           className="text-center"
           style={{
             borderRadius: 16,
-            padding: "24px 22px",
-            background: "var(--theme-onboarding-card-bg)",
-            border: "1px solid var(--theme-onboarding-card-border)",
-            backdropFilter: "blur(8px)",
-            boxShadow: "var(--theme-onboarding-card-shadow)",
+            padding: '24px 22px',
+            background: 'var(--theme-onboarding-card-bg)',
+            border: '1px solid var(--theme-onboarding-card-border)',
+            boxShadow: 'var(--theme-onboarding-card-shadow)',
           }}
         >
           {/* Body — Paper 17E-0 */}
           <p
             style={{
               fontSize: 15,
-              lineHeight: "23px",
-              color: "var(--theme-onboarding-body)",
+              lineHeight: '23px',
+              color: 'var(--theme-onboarding-body)',
               opacity: 1,
-              textAlign: "center",
+              textAlign: 'center',
             }}
           >
             {t.onboardingCarousel.slide2Body}
@@ -258,32 +260,23 @@ export const OnboardingCarouselScreen = ({
 
         {/* Button + dots — Paper 17F-0 */}
         <div className="mt-[16px]">
-          {/* Button — Paper 17G-0 */}
-          <button
-            type="button"
-            onClick={() => goTo(2)}
-            style={{
-              width: "100%",
-              height: 52,
-              borderRadius: 14,
-              background: "var(--theme-accent)",
-              border: "2px solid #C9A46F",
-              boxShadow: "#1E5C5A40 0px 2px 8px",
-              fontSize: 16,
-              letterSpacing: "0.04em",
-              color: "#FFFFFF",
-            }}
-          >
-            {t.onboardingCarousel.slide2Button}
-          </button>
           <div className="mt-[16px]">{dots}</div>
+          <div className="mt-[16px] grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => goTo(0)} style={secondaryActionStyle}>
+              {t.common.back}
+            </button>
+            <button type="button" onClick={() => goTo(2)} style={primaryActionStyle}>
+              {t.onboardingCarousel.slide2Button}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ─── Slide 3 — Paper 17M-0 ─── */}
       <div
-        className="absolute inset-0 z-10 flex flex-col px-[20px] pb-[36px] pt-[56px]"
+        className="absolute inset-0 z-10 flex flex-col px-[20px] pt-[56px]"
         style={{
+          ...slideShellStyle,
           transform: `translateX(calc(${(2 - slide) * 100}% + ${delta}px))`,
           transition,
         }}
@@ -293,10 +286,10 @@ export const OnboardingCarouselScreen = ({
           className="qahal-display mt-[24px] text-center"
           style={{
             fontSize: 38,
-            lineHeight: "44px",
+            lineHeight: '44px',
             fontWeight: 700,
-            color: "var(--theme-onboarding-title)",
-            textShadow: "var(--theme-onboarding-title-shadow)",
+            color: 'var(--theme-onboarding-title)',
+            textShadow: 'var(--theme-onboarding-title-shadow)',
           }}
         >
           {t.onboardingCarousel.slide3Title}
@@ -309,21 +302,20 @@ export const OnboardingCarouselScreen = ({
           className="text-center"
           style={{
             borderRadius: 16,
-            padding: "24px 22px",
-            background: "var(--theme-onboarding-card-bg)",
-            border: "1px solid var(--theme-onboarding-card-border)",
-            backdropFilter: "blur(8px)",
-            boxShadow: "var(--theme-onboarding-card-shadow)",
+            padding: '24px 22px',
+            background: 'var(--theme-onboarding-card-bg)',
+            border: '1px solid var(--theme-onboarding-card-border)',
+            boxShadow: 'var(--theme-onboarding-card-shadow)',
           }}
         >
           {/* Body — Paper 1IY-0 */}
           <p
             style={{
               fontSize: 15,
-              lineHeight: "23px",
-              color: "var(--theme-onboarding-body)",
+              lineHeight: '23px',
+              color: 'var(--theme-onboarding-body)',
               opacity: 1,
-              textAlign: "center",
+              textAlign: 'center',
             }}
           >
             {t.onboardingCarousel.slide3Body}
@@ -332,25 +324,23 @@ export const OnboardingCarouselScreen = ({
 
         {/* Button + dots — Paper 1IZ-0 */}
         <div className="mt-[16px]">
-          {/* Button — Paper 1J0-0 */}
-          <button
-            type="button"
-            onClick={onStart}
-            style={{
-              width: "100%",
-              height: 56,
-              borderRadius: 14,
-              background: "var(--theme-accent)",
-              border: "2px solid #C9A46F",
-              boxShadow: "#1E5C5A4D 0px 3px 12px",
-              fontSize: 17,
-              letterSpacing: "0.05em",
-              color: "#FFFFFF",
-            }}
-          >
-            {t.onboardingCarousel.slide3PrimaryButton}
-          </button>
           <div className="mt-[16px]">{dots}</div>
+          <div className="mt-[16px] grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => goTo(1)} style={secondaryActionStyle}>
+              {t.onboardingCarousel.slide3SecondaryButton}
+            </button>
+            <button
+              type="button"
+              onClick={onStart}
+              style={{
+                ...primaryActionStyle,
+                minHeight: 56,
+                fontSize: 17,
+              }}
+            >
+              {t.onboardingCarousel.slide3PrimaryButton}
+            </button>
+          </div>
         </div>
       </div>
     </section>

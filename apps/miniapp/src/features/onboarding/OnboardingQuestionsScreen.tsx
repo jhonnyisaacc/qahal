@@ -1,6 +1,5 @@
-import { useI18n } from "../../app/i18n";
-
-const TOTAL_DOTS = 9;
+import type { EmunahState } from '@qahal/shared';
+import { useI18n } from '../../app/i18n';
 
 interface OnboardingQuestionsScreenProps {
   step: number;
@@ -10,6 +9,7 @@ interface OnboardingQuestionsScreenProps {
   onNext: () => void;
   onBack: () => void;
   onExit: () => void;
+  emunahState?: EmunahState;
 }
 
 export const OnboardingQuestionsScreen = ({
@@ -20,35 +20,46 @@ export const OnboardingQuestionsScreen = ({
   onNext,
   onBack,
   onExit,
+  emunahState,
 }: OnboardingQuestionsScreenProps) => {
   const { t } = useI18n();
-  const questions = [
-    t.onboardingQuestions.introQuestion,
-    ...t.onboardingQuestions.questions,
-    t.onboardingQuestions.resultQuestion,
+  const isStarting = emunahState === 'starting';
+
+  const fullSteps = [
+    {
+      text: t.onboardingQuestions.introQuestion,
+      references: t.onboardingQuestions.references[0] ?? [],
+      kind: 'intro' as const,
+    },
+    ...t.onboardingQuestions.questions.map((question, index) => ({
+      text: question,
+      references: t.onboardingQuestions.references[index + 1] ?? [],
+      kind: 'question' as const,
+    })),
+    {
+      text: t.onboardingQuestions.resultQuestion,
+      references:
+        t.onboardingQuestions.references[t.onboardingQuestions.references.length - 1] ?? [],
+      kind: 'result' as const,
+    },
   ];
-  const questionText = questions[step] ?? questions[0];
-  const questionReferences =
-    t.onboardingQuestions.references[step] ??
-    t.onboardingQuestions.references[0] ??
-    [];
-  const isIntro = step === 0;
-  const isResult = step === questions.length - 1;
+
+  const questionSteps = isStarting
+    ? [fullSteps[0], fullSteps[1], fullSteps[3], fullSteps[fullSteps.length - 1]]
+    : fullSteps;
+  const currentStep = (questionSteps[step] ?? questionSteps[0] ?? fullSteps[0])!;
+  const questionText = currentStep.text;
+  const questionReferences = currentStep.references;
+  const isIntro = currentStep.kind === 'intro';
+  const isResult = currentStep.kind === 'result';
 
   return (
     <section className="relative flex min-h-[100dvh] flex-col overflow-hidden">
-      {/* Paper 3E5-0: dark background */}
+      {/* Solid warm background (pure, no radial overlays) */}
       <div
         className="absolute inset-0"
         style={{
-          background: "var(--theme-bg-main)",
-        }}
-      />
-      {/* Paper 3ER-0: vignette overlay */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: "var(--theme-bg-overlay)",
+          background: 'var(--theme-bg-main)',
         }}
       />
 
@@ -63,9 +74,9 @@ export const OnboardingQuestionsScreen = ({
             className="qahal-display w-full text-center"
             style={{
               fontSize: 34,
-              lineHeight: "120%",
+              lineHeight: '120%',
               fontWeight: 600,
-              color: "#E8DDD0",
+              color: 'var(--theme-onboarding-title)',
             }}
           >
             {questionText}
@@ -75,21 +86,20 @@ export const OnboardingQuestionsScreen = ({
           {isIntro ? (
             <div
               style={{
-                backdropFilter: "blur(12px)",
-                background: "#2A241EA6",
-                border: "1px solid #C9A46F1F",
+                background: 'var(--theme-onboarding-card-bg)',
+                border: '1px solid var(--theme-onboarding-card-border)',
+                boxShadow: 'var(--theme-onboarding-card-shadow)',
                 borderRadius: 20,
-                padding: "24px 20px",
-                width: "100%",
+                padding: '24px 20px',
+                width: '100%',
               }}
             >
               <p
                 className="text-center"
                 style={{
                   fontSize: 15,
-                  lineHeight: "155%",
-                  color: "#E8DDD0",
-                  opacity: 0.8,
+                  lineHeight: '155%',
+                  color: 'var(--theme-onboarding-body)',
                 }}
               >
                 {t.onboardingQuestions.introBody}
@@ -98,21 +108,20 @@ export const OnboardingQuestionsScreen = ({
           ) : isResult ? (
             <div
               style={{
-                backdropFilter: "blur(12px)",
-                background: "#2A241EA6",
-                border: "1px solid #C9A46F1F",
+                background: 'var(--theme-onboarding-card-bg)',
+                border: '1px solid var(--theme-onboarding-card-border)',
+                boxShadow: 'var(--theme-onboarding-card-shadow)',
                 borderRadius: 20,
-                padding: "24px 20px",
-                width: "100%",
+                padding: '24px 20px',
+                width: '100%',
               }}
             >
               <p
                 className="text-center"
                 style={{
                   fontSize: 15,
-                  lineHeight: "155%",
-                  color: "#E8DDD0",
-                  opacity: 0.8,
+                  lineHeight: '155%',
+                  color: 'var(--theme-onboarding-body)',
                 }}
               >
                 {t.onboardingQuestions.resultBody}
@@ -123,7 +132,7 @@ export const OnboardingQuestionsScreen = ({
               className="flex w-full flex-col gap-[14px]"
               style={{
                 borderRadius: 16,
-                padding: "18px 16px",
+                padding: '18px 16px',
               }}
             >
               {questionReferences.map((ref) => (
@@ -131,11 +140,11 @@ export const OnboardingQuestionsScreen = ({
                   key={ref}
                   style={{
                     fontSize: 11,
-                    letterSpacing: "0.08em",
-                    color: "#C9A46F",
+                    letterSpacing: '0.08em',
+                    color: 'var(--brand-purple)',
                     fontWeight: 600,
                     opacity: 0.8,
-                    textAlign: "center",
+                    textAlign: 'center',
                   }}
                 >
                   {ref}
@@ -156,13 +165,13 @@ export const OnboardingQuestionsScreen = ({
               style={{
                 height: 52,
                 borderRadius: 14,
-                background: "var(--theme-accent)",
-                border: "1.5px solid #C9A46F",
-                boxShadow: "#1E5C5A40 0px 8px 24px",
+                background: 'var(--theme-button-primary-bg)',
+                border: '1px solid var(--theme-button-primary-border)',
+                boxShadow: 'var(--theme-button-primary-shadow)',
                 fontSize: 16,
                 fontWeight: 600,
-                letterSpacing: "0.02em",
-                color: "#E8DDD0",
+                letterSpacing: '0.02em',
+                color: 'var(--theme-button-primary-text)',
               }}
             >
               {t.onboardingQuestions.understood}
@@ -176,12 +185,12 @@ export const OnboardingQuestionsScreen = ({
               style={{
                 height: 52,
                 borderRadius: 14,
-                background: "#2A241E80",
-                border: "1.5px solid #C9A46F33",
+                background: 'var(--theme-button-secondary-bg)',
+                border: '1px solid var(--theme-button-secondary-border)',
+                boxShadow: 'var(--theme-card-shadow)',
                 fontSize: 16,
                 fontWeight: 600,
-                color: "#E8DDD0",
-                opacity: 0.7,
+                color: 'var(--theme-button-secondary-text)',
               }}
             >
               {t.onboardingQuestions.ok}
@@ -193,19 +202,19 @@ export const OnboardingQuestionsScreen = ({
               <button
                 type="button"
                 onClick={() => {
-                  onSelect("yes");
+                  onSelect('yes');
                   onNext();
                 }}
-                className={`flex shrink-0 items-center justify-center ${selectedValue === "yes" ? "ring-2 ring-white/30" : ""}`}
+                className={`flex shrink-0 items-center justify-center ${selectedValue === 'yes' ? 'ring-2 ring-white/30' : ''}`}
                 style={{
                   height: 52,
                   borderRadius: 14,
-                  background: "var(--theme-accent)",
-                  border: "1.5px solid #C9A46F",
-                  boxShadow: "#1E5C5A40 0px 8px 24px",
+                  background: 'var(--theme-button-primary-bg)',
+                  border: '1px solid var(--theme-button-primary-border)',
+                  boxShadow: 'var(--theme-button-primary-shadow)',
                   fontSize: 16,
                   fontWeight: 600,
-                  color: "#E8DDD0",
+                  color: 'var(--theme-button-primary-text)',
                 }}
               >
                 {t.onboardingQuestions.yes}
@@ -214,19 +223,19 @@ export const OnboardingQuestionsScreen = ({
               <button
                 type="button"
                 onClick={() => {
-                  onSelect("no");
+                  onSelect('no');
                   onNext();
                 }}
-                className={`flex shrink-0 items-center justify-center ${selectedValue === "no" ? "ring-2 ring-white/30" : ""}`}
+                className={`flex shrink-0 items-center justify-center ${selectedValue === 'no' ? 'ring-2 ring-white/30' : ''}`}
                 style={{
                   height: 52,
                   borderRadius: 14,
-                  background: "#2A241E80",
-                  border: "1.5px solid #C9A46F33",
+                  background: 'var(--theme-button-secondary-bg)',
+                  border: '1px solid var(--theme-button-secondary-border)',
+                  boxShadow: 'var(--theme-card-shadow)',
                   fontSize: 16,
                   fontWeight: 600,
-                  color: "#E8DDD0",
-                  opacity: 0.7,
+                  color: 'var(--theme-button-secondary-text)',
                 }}
               >
                 {t.onboardingQuestions.no}
@@ -236,14 +245,15 @@ export const OnboardingQuestionsScreen = ({
 
           {/* Progress dots — Paper 3FI-0, 3FH-0 */}
           <div className="flex items-center justify-center gap-[6px] py-[4px]">
-            {Array.from({ length: TOTAL_DOTS }).map((_, i) => (
+            {Array.from({ length: questionSteps.length }).map((_, i) => (
               <span
                 key={i}
                 className="shrink-0 rounded-[99px]"
                 style={{
                   width: i === step ? 24 : 12,
                   height: 3,
-                  background: i === step ? "#C9A46F" : "#E8DDD026",
+                  background:
+                    i === step ? 'var(--brand-purple)' : 'var(--theme-onboarding-dot-inactive)',
                 }}
               />
             ))}
